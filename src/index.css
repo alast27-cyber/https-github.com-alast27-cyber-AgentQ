@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --bg: #050505;
+  --cyan: #00ffcc;
+}
+
+body {
+  font-family: var(--font-mono);
+  background-color: var(--bg);
+  color: var(--cyan);
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cyan);
+  border-radius: 2px;
+}
+
+.quantum-glow {
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+}
+
+.glass-panel {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+}
+
+@keyframes pulse-border {
+  0% { border-color: rgba(0, 255, 204, 0.2); }
+  50% { border-color: rgba(0, 255, 204, 0.6); }
+  100% { border-color: rgba(0, 255, 204, 0.2); }
+}
+
+.pulse-active {
+  animation: pulse-border 2s infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-reverse 12s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.holographic-grid {
+  background-image: radial-gradient(circle, #00ffcc 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Custom scrollbar for specific containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 204, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 204, 0.4);
+}
