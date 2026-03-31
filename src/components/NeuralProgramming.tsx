@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BrainCircuit, 
   Zap, 
@@ -284,6 +284,15 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
     }
   };
 
+  const predictedQPIChange = useMemo(() => {
+    if (!nodeA || !nodeB || isNaN(parseInt(nodeA)) || isNaN(parseInt(nodeB))) return 0;
+    const currentLinks = ibqos?.links.length || 0;
+    const total = ibqos?.infons.length || 240;
+    const oldLinkFactor = Math.min(0.3, (currentLinks / total) * 2.5);
+    const newLinkFactor = Math.min(0.3, ((currentLinks + 1) / total) * 2.5);
+    return (newLinkFactor - oldLinkFactor) * 100;
+  }, [nodeA, nodeB, ibqos?.links.length, ibqos?.infons.length]);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -427,23 +436,99 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
           />
         </div>
 
-        {/* Link Preview */}
+        {/* Link Preview & Impact */}
         {(nodeA && nodeB) && (
-          <div className="p-6 bg-purple-500/5 border border-purple-500/20 rounded-[2rem] flex items-center justify-center gap-12 animate-in fade-in zoom-in-95 duration-500 relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex flex-col items-center gap-3 relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeA}</div>
-              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Source Node</span>
-            </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent relative">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1.5 bg-black border border-purple-500/30 rounded-full text-[9px] font-mono text-purple-400 uppercase tracking-widest shadow-xl">
-                {linkType}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in zoom-in-95 duration-500">
+            <div className="lg:col-span-2 p-6 bg-purple-500/5 border border-purple-500/20 rounded-[2rem] flex items-center justify-center gap-12 relative group overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="flex flex-col items-center gap-3 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeA}</div>
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Source</span>
               </div>
-              <div className="absolute inset-0 bg-purple-500/20 blur-xl animate-pulse" />
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1.5 bg-black border border-purple-500/30 rounded-full text-[9px] font-mono text-purple-400 uppercase tracking-widest shadow-xl">
+                  {linkType}
+                </div>
+                <div className="absolute inset-0 bg-purple-500/20 blur-xl animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center gap-3 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeB}</div>
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Target</span>
+              </div>
             </div>
-            <div className="flex flex-col items-center gap-3 relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeB}</div>
-              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Target Node</span>
+            
+            <div className="p-6 bg-cyan-500/5 border border-cyan-500/20 rounded-[2rem] flex flex-col justify-center items-center gap-2 text-center relative group overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-2">
+                <Activity className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Predicted QPI Impact</span>
+              <div className="text-2xl font-black text-cyan-400 italic tracking-tighter">+{predictedQPIChange.toFixed(2)}%</div>
+              <p className="text-[8px] text-white/40 font-mono uppercase">System Integration Delta</p>
+            </div>
+          </div>
+        )}
+
+        {/* Neural Topology Overview */}
+        {ibqos && ibqos.links.length > 0 && (
+          <div className="p-6 bg-white/5 border border-white/5 rounded-[2rem] space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Neural Topology Overview</span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                  <span className="text-[8px] font-mono text-white/40 uppercase">Entanglement</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                  <span className="text-[8px] font-mono text-white/40 uppercase">Resonance</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  <span className="text-[8px] font-mono text-white/40 uppercase">Causal</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="h-32 w-full bg-black/40 rounded-2xl border border-white/5 relative overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-0 holographic-grid opacity-10" />
+              <svg className="w-full h-full p-4 overflow-visible">
+                {ibqos.links.map((link, idx) => {
+                  const x1 = (link.sourceId % 20) * (100 / 20) + 2.5;
+                  const y1 = Math.floor(link.sourceId / 20) * (100 / 12) + 4;
+                  const x2 = (link.targetId % 20) * (100 / 20) + 2.5;
+                  const y2 = Math.floor(link.targetId / 20) * (100 / 12) + 4;
+                  
+                  let color = "#a855f7"; // purple
+                  if (link.type === 'resonance') color = "#06b6d4"; // cyan
+                  if (link.type === 'causal') color = "#f97316"; // orange
+                  
+                  return (
+                    <motion.line 
+                      key={link.id}
+                      x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                      stroke={color}
+                      strokeWidth={1 + link.strength * 2}
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 0.4 }}
+                      transition={{ duration: 1, delay: idx * 0.05 }}
+                    />
+                  );
+                })}
+                {/* Nodes involved in links */}
+                {Array.from(new Set(ibqos.links.flatMap(l => [l.sourceId, l.targetId]))).map(id => {
+                  const x = (id % 20) * (100 / 20) + 2.5;
+                  const y = Math.floor(id / 20) * (100 / 12) + 4;
+                  return (
+                    <circle 
+                      key={`node-${id}`}
+                      cx={`${x}%`} cy={`${y}%`} r="1.5"
+                      fill="white"
+                      className="opacity-40"
+                    />
+                  );
+                })}
+              </svg>
             </div>
           </div>
         )}

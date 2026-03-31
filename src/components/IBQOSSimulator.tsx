@@ -299,18 +299,22 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
   const kpis = useMemo(() => {
     const total = ibqos.infons.length;
     const entangledCount = ibqos.infons.filter(q => q.isEntangled).length;
+    const cognitiveLinkCount = ibqos.links?.length || 0;
     const avgCoherence = ibqos.infons.reduce((acc, q) => acc + q.coherence, 0) / total;
-    const qpi = (avgCoherence * 0.6) + ((entangledCount / total) * 0.3) + (0.1 * (1 - ibqos.noiseFloor));
+    
+    // QPI now considers cognitive links as a high-value integration factor
+    const linkFactor = Math.min(0.3, (cognitiveLinkCount / total) * 2.5);
+    const qpi = (avgCoherence * 0.4) + ((entangledCount / total) * 0.2) + linkFactor + (0.1 * (1 - ibqos.noiseFloor));
 
     return {
       count: total,
-      entanglementRate: (entangledCount / total) * 100,
+      entanglementRate: ((entangledCount + cognitiveLinkCount) / total) * 100,
       avgCoherence: avgCoherence * 100,
       coherenceTime: avgCoherence * 142.5,
       qpi: qpi * 100,
       logicalInfons: Math.floor(total / 40)
     };
-  }, [ibqos.infons, ibqos.noiseFloor]);
+  }, [ibqos.infons, ibqos.links, ibqos.noiseFloor]);
 
   const handleBoot = () => {
     setIsBooting(true);
