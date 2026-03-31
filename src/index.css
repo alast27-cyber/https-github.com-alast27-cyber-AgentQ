@@ -69,8 +69,8 @@ body {
 }
 
 @keyframes quantum-pulse {
-  0%, 100% { opacity: 0.3; stroke-width: 2; filter: blur(1px); }
-  50% { opacity: 1; stroke-width: 6; filter: blur(4px); }
+  0%, 100% { opacity: 0.3; filter: blur(1px); }
+  50% { opacity: 1; filter: blur(4px); }
 }
 
 .animate-quantum-pulse {

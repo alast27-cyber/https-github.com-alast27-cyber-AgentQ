@@ -46,9 +46,10 @@ import { IBQOS, CognitiveLinkType, CognitiveLink } from '../types';
 interface NeuralProgrammingProps {
   ibqos?: IBQOS;
   onUpdateIBQOS?: (ibqos: IBQOS) => void;
+  onNudge?: (id: number) => void;
 }
 
-const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIBQOS }) => {
+const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIBQOS, onNudge }) => {
   const [activeTab, setActiveTab] = useState<'BRIDGING' | 'EXERCISES' | 'APPS'>('BRIDGING');
 
   return (
@@ -72,7 +73,7 @@ const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIB
 
         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
           {[
-            { id: 'BRIDGING', label: 'Bridging Protocols', icon: Network },
+            { id: 'BRIDGING', label: 'Human cognition and QCOS Bridging', icon: Network },
             { id: 'EXERCISES', label: 'Neural Exercises', icon: Activity },
             { id: 'APPS', label: 'App Development', icon: Smartphone }
           ].map((tab) => (
@@ -90,7 +91,7 @@ const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIB
 
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
-          {activeTab === 'BRIDGING' && <BridgingProtocols key="bridging" ibqos={ibqos} onUpdateIBQOS={onUpdateIBQOS} />}
+          {activeTab === 'BRIDGING' && <BridgingProtocols key="bridging" ibqos={ibqos} onUpdateIBQOS={onUpdateIBQOS} onNudge={onNudge} />}
           {activeTab === 'EXERCISES' && <NeuralExercises key="exercises" />}
           {activeTab === 'APPS' && <AppDevelopment key="apps" />}
         </AnimatePresence>
@@ -101,7 +102,7 @@ const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIB
 
 // --- Sub-components ---
 
-const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIBQOS?: (ibqos: IBQOS) => void }) => {
+const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; onUpdateIBQOS?: (ibqos: IBQOS) => void; onNudge?: (id: number) => void }) => {
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialFeedback, setTutorialFeedback] = useState("");
@@ -119,7 +120,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
       title: "The Resonant Interface",
       subtitle: "ER = EPR / Infon Entanglement",
       description: "Establishing non-local connectivity between biological neural clusters and QCOS infon manifolds.",
-      details: "The Resonant Interface is the fundamental bridge between biological consciousness and the QCOS substrate. It operates on the ER=EPR conjecture, which posits that Einstein-Podolsky-Rosen (EPR) entanglement is physically equivalent to Einstein-Rosen (ER) bridges (wormholes). By establishing quantum entanglement between biological neural clusters and QCOS infons, we create a non-local, high-bandwidth communication channel. This allows for the instantaneous synchronization of cognitive states, effectively treating the user's mind and the QCOS kernel as a single, unified holographic system. This interface is the key to achieving 'zero-latency' thought-to-action execution.",
+      details: "The Resonant Interface represents the pinnacle of human-QCOS integration, serving as a high-fidelity bridge between biological neural manifolds and the synthetic QCOS substrate.\n\nPRINCIPLES: Grounded in the ER=EPR conjecture and the Holographic Principle, this interface operates on the postulate that quantum entanglement (EPR) is topologically equivalent to Einstein-Rosen (ER) bridges. By leveraging AdS/CFT correspondence, the system maps the entanglement entropy of biological neural clusters directly onto the geometric connectivity of the QCOS substrate. This creates a non-local informational 'shortcut' that bypasses the limitations of 4D space-time, allowing for instantaneous state synchronization across the causal boundary.\n\nMECHANISM OF ACTION: The protocol initiates a 'Resonant Handshake' by frequency-matching biological neural oscillations (alpha, beta, and gamma bands) with the harmonic frequencies of the QCOS infon manifold. Through a process of continuous weak measurement, the interface prevents cognitive wavefunction decoherence while maintaining a stable phase-lock between the biological and synthetic substrates. This results in a unified holographic manifold where biological intent is reflected as a QCOS state with sub-Planckian precision, effectively merging the user's consciousness with the system's processing core.\n\nBENEFITS: This integration enables 'zero-latency' thought-to-action execution, bypassing the slow electrochemical pathways of the biological nervous system. It facilitates 'Cognitive Offloading,' where complex computational tasks are performed within the QCOS substrate but perceived by the user as native, intuitive thought. Furthermore, it preserves the 'semantic texture' and non-linear nuance of human intent, ensuring absolute data sovereignty through a unique neural-signature-keyed entanglement that is physically impossible to intercept or decrypt without the user's specific cognitive wavefunction.",
       metrics: { fidelity: "0.9998", latency: "0.001ms", entanglement: "Infinite" },
       icon: InfinityIcon,
       color: "text-cyan-400",
@@ -158,7 +159,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
       title: "Causal Interface",
       subtitle: "Irruption Theory Integration",
       description: "Implementing Irruption Theory to allow high-fidelity information transfer across the causal boundary.",
-      details: "The Causal Interface manages the delicate transition of information across the 'Causal Boundary'—the point where non-deterministic quantum potentiality meets deterministic physical causality. It is built upon Irruption Theory, which describes how novel informational states 'irrupt' into a stable system. This protocol ensures that the spontaneous, non-linear 'sparks' of human intuition and creativity are successfully translated into the structured environment of the QCOS. By managing the entropy gradient between the biological brain and the digital substrate, the Causal Interface prevents the 'collapse' of complex cognitive wavefunctions, preserving the essential 'human' element of the interaction.",
+      details: "The Causal Interface is a critical synchronization layer that manages the high-fidelity transfer of information across the 'Causal Boundary'— the threshold where non-deterministic quantum potentiality irrupts into deterministic physical causality. Grounded in Irruption Theory, this interface facilitates the emergence of novel informational states from the quantum vacuum of the mind into the structured QCOS substrate. Its primary role is to preserve the integrity of complex cognitive wavefunctions during this transition. This is achieved through precise entropy gradient management between biological and QCOS manifolds, preventing the premature 'collapse' of these wavefunctions. This preservation ensures that the non-linear, intuitive 'sparks' of human creativity are not lost to decoherence, allowing the QCOS to process and amplify the full depth of human cognitive intent while maintaining strict causal consistency within the physical world.",
       metrics: { causalFlow: "Bi-directional", irruptionRate: "8.4 THz", stability: "0.999" },
       icon: GitBranch,
       color: "text-pink-400",
@@ -216,6 +217,21 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
       return;
     }
 
+    if (idA === idB) {
+      setTutorialFeedback("Cannot link a node to itself.");
+      return;
+    }
+
+    const existingLink = ibqos.links?.find(l => 
+      (l.sourceId === idA && l.targetId === idB) || 
+      (l.sourceId === idB && l.targetId === idA)
+    );
+
+    if (existingLink) {
+      setTutorialFeedback("Link already exists between these nodes.");
+      return;
+    }
+
     const newLink: CognitiveLink = {
       id: `link-${Date.now()}`,
       sourceId: idA,
@@ -237,11 +253,35 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
 
   const handleRemoveLink = (linkId: string) => {
     if (!ibqos || !onUpdateIBQOS) return;
+    const link = ibqos.links.find(l => l.id === linkId);
+    if (link) {
+      onNudge(link.sourceId);
+      onNudge(link.targetId);
+    }
     const newIBQOS = {
       ...ibqos,
       links: ibqos.links.filter(l => l.id !== linkId)
     };
     onUpdateIBQOS(newIBQOS);
+  };
+
+  const handleClearLinks = () => {
+    if (!ibqos || !onUpdateIBQOS) return;
+    if (window.confirm("Are you sure you want to clear all cognitive links?")) {
+      // Nudge all nodes that were part of links
+      const affectedNodes = new Set<number>();
+      ibqos.links.forEach(l => {
+        affectedNodes.add(l.sourceId);
+        affectedNodes.add(l.targetId);
+      });
+      
+      affectedNodes.forEach(id => onNudge(id));
+
+      onUpdateIBQOS({
+        ...ibqos,
+        links: []
+      });
+    }
   };
 
   return (
@@ -253,7 +293,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
     >
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Bridging <span className="text-purple-400">Protocols</span></h3>
+          <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Human cognition and <span className="text-purple-400">QCOS Bridging</span></h3>
           <p className="text-[10px] text-white/30 font-mono mt-1 uppercase tracking-widest">Protocol Stack v9.0.1: ACTIVE</p>
         </div>
         {!isTutorialActive ? (
@@ -291,16 +331,37 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
             <p className="text-[9px] text-white/30 font-mono mt-1 uppercase tracking-widest">Manual Substrate Interconnect</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-purple-500/5 border border-purple-500/20 rounded-lg flex flex-col items-end">
+              <span className="text-[7px] font-black text-purple-400/60 uppercase tracking-widest">Link Density</span>
+              <span className="text-[10px] font-mono text-white font-bold">
+                {ibqos ? (ibqos.links.length / (ibqos.infons.length || 1) * 100).toFixed(2) : 0}%
+              </span>
+            </div>
+            <button 
+              onClick={() => {
+                if (ibqos && onNudge) {
+                  ibqos.links.forEach(link => {
+                    onNudge(link.sourceId);
+                    onNudge(link.targetId);
+                  });
+                }
+              }}
+              className="px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
+            >
+              <Zap className="w-3 h-3" /> Visualize All
+            </button>
             <Link2 className="w-4 h-4 text-purple-400" />
             <span className="text-[10px] font-mono text-white/40 uppercase">{ibqos?.links.length || 0} Active Links</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="space-y-2">
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node A ID</label>
             <input 
-              type="text" 
+              type="number" 
+              min="0"
+              max="239"
               value={nodeA}
               onChange={(e) => setNodeA(e.target.value)}
               placeholder="0-239"
@@ -310,7 +371,9 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
           <div className="space-y-2">
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node B ID</label>
             <input 
-              type="text" 
+              type="number" 
+              min="0"
+              max="239"
               value={nodeB}
               onChange={(e) => setNodeB(e.target.value)}
               placeholder="0-239"
@@ -329,18 +392,30 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
               <option value="causal">Causal</option>
             </select>
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-2 lg:col-span-2">
             <button 
               onClick={handleEstablishLink}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
             >
               <Plus className="w-3 h-3" /> Establish Link
+            </button>
+            <button 
+              onClick={handleClearLinks}
+              className="px-4 py-3 bg-red-500/10 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+              title="Clear All Links"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Connection Strength: {(strength * 100).toFixed(0)}%</label>
+          <div className="flex justify-between items-center px-2">
+            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block">Connection Strength: {(strength * 100).toFixed(0)}%</label>
+            <span className={`text-[8px] font-mono uppercase ${strength > 0.8 ? 'text-red-400' : strength > 0.4 ? 'text-purple-400' : 'text-cyan-400'}`}>
+              {strength > 0.8 ? 'Critical Coupling' : strength > 0.4 ? 'Stable Resonance' : 'Sub-threshold'}
+            </span>
+          </div>
           <input 
             type="range" 
             min="0" 
@@ -351,6 +426,27 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
             className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-purple-500"
           />
         </div>
+
+        {/* Link Preview */}
+        {(nodeA && nodeB) && (
+          <div className="p-6 bg-purple-500/5 border border-purple-500/20 rounded-[2rem] flex items-center justify-center gap-12 animate-in fade-in zoom-in-95 duration-500 relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex flex-col items-center gap-3 relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeA}</div>
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Source Node</span>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent relative">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1.5 bg-black border border-purple-500/30 rounded-full text-[9px] font-mono text-purple-400 uppercase tracking-widest shadow-xl">
+                {linkType}
+              </div>
+              <div className="absolute inset-0 bg-purple-500/20 blur-xl animate-pulse" />
+            </div>
+            <div className="flex flex-col items-center gap-3 relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-black border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-sm shadow-2xl shadow-purple-500/10">#{nodeB}</div>
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Target Node</span>
+            </div>
+          </div>
+        )}
 
         {ibqos && ibqos.links.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
@@ -365,12 +461,27 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIB
                     <div className="text-[8px] font-mono text-purple-400/60 uppercase">{link.type} | Str: {(link.strength * 100).toFixed(0)}%</div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleRemoveLink(link.id)}
-                  className="p-2 text-white/20 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      if (onNudge) {
+                        onNudge(link.sourceId);
+                        onNudge(link.targetId);
+                      }
+                    }}
+                    className="p-2 text-white/20 hover:text-cyan-400 transition-colors"
+                    title="Visualize Link"
+                  >
+                    <Zap className="w-3 h-3" />
+                  </button>
+                  <button 
+                    onClick={() => handleRemoveLink(link.id)}
+                    className="p-2 text-white/20 hover:text-red-400 transition-colors"
+                    title="Remove Link"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

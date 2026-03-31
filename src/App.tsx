@@ -458,7 +458,14 @@ const App: React.FC = () => {
                         </button>
                      </div>
                      <div className="h-[400px]">
-                        <IBQOSSimulator ibqos={state.ibqos} onNudge={handleNudgeInfon} onCalibrate={handleCalibrateIBQOS} onUpdateInfons={handleUpdateInfons} onUpdateDensity={handleUpdateDensity} />
+                        <IBQOSSimulator 
+                          ibqos={state.ibqos} 
+                          onNudge={handleNudgeInfon} 
+                          onCalibrate={handleCalibrateIBQOS} 
+                          onUpdateInfons={handleUpdateInfons} 
+                          onUpdateDensity={handleUpdateDensity} 
+                          onUpdateIBQOS={handleUpdateIBQOS}
+                        />
                      </div>
                   </div>
               </div>
@@ -474,10 +481,25 @@ const App: React.FC = () => {
             </div>
           )}
           {currentPage === 'quantum-evolve' && <QuantumEvolution systemState={state} onUpdateEvolution={handleUpdateEvolution} />}
-          {currentPage === 'neural-programming' && <NeuralProgramming ibqos={state.ibqos} onUpdateIBQOS={handleUpdateIBQOS} />}
+          {currentPage === 'neural-programming' && (
+            <NeuralProgramming 
+              ibqos={state.ibqos} 
+              onUpdateIBQOS={handleUpdateIBQOS} 
+              onNudge={handleNudgeInfon}
+            />
+          )}
           {currentPage === 'cognition' && <QuantumCognitionEngines onAgenticCommand={handleAgenticCommand} />}
           {currentPage === 'gus' && <GrandUniverseSimulator metrics={state.gus} liveDataStream={state.training.liveDataStream} onActivateMirroring={() => {}} autoTask={state.activeSimulationTask} onTaskComplete={(s) => {}} />}
-          {currentPage === 'qpu' && <IBQOSSimulator ibqos={state.ibqos} onNudge={handleNudgeInfon} onCalibrate={handleCalibrateIBQOS} onUpdateInfons={handleUpdateInfons} onUpdateDensity={handleUpdateDensity} />}
+          {currentPage === 'qpu' && (
+            <IBQOSSimulator 
+              ibqos={state.ibqos} 
+              onNudge={handleNudgeInfon} 
+              onCalibrate={handleCalibrateIBQOS} 
+              onUpdateInfons={handleUpdateInfons} 
+              onUpdateDensity={handleUpdateDensity} 
+              onUpdateIBQOS={handleUpdateIBQOS}
+            />
+          )}
           {currentPage === 'studio' && <QCOSStudio activeCore={state.activeCore} />}
           {currentPage === 'chips' && <CHIPSProtocol />}
           {currentPage === 'browser' && <CHIPSBrowser onTriggerDeepSearch={(query) => { handleAgenticCommand('TRIGGER_SIMULATION', query); }} />}

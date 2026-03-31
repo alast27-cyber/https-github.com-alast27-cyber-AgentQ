@@ -19,7 +19,7 @@ import {
   Gauge,
   Trash2
 } from 'lucide-react';
-import { IBQOS, InfonState } from '../types';
+import { IBQOS, InfonState, CognitiveLink } from '../types';
 
 interface IBQOSSimulatorProps {
   ibqos: IBQOS;
@@ -27,6 +27,7 @@ interface IBQOSSimulatorProps {
   onCalibrate: (updatedIBQOS?: IBQOS) => void;
   onUpdateInfons: (infons: InfonState[]) => void;
   onUpdateDensity?: (density: number) => void;
+  onUpdateIBQOS?: (ibqos: IBQOS) => void;
 }
 
 const COLS = 20;
@@ -160,15 +161,27 @@ const InfonNode = memo(({
               </div>
             )}
             {(() => {
-              const cogLink = ibqos?.links?.find(l => l.sourceId === infon.id || l.targetId === infon.id);
-              if (cogLink) {
-                const partnerId = cogLink.sourceId === infon.id ? cogLink.targetId : cogLink.sourceId;
-                return (
-                  <div className="flex justify-between border-t border-purple-500/30 pt-1 mt-1">
-                    <span className="text-cyan-400 uppercase font-black">{cogLink.type}</span>
-                    <span className="text-cyan-300 font-bold">#{partnerId}</span>
-                  </div>
-                );
+              const cogLinks = ibqos?.links?.filter(l => l.sourceId === infon.id || l.targetId === infon.id);
+              if (cogLinks && cogLinks.length > 0) {
+                return cogLinks.map(link => {
+                  const partnerId = link.sourceId === infon.id ? link.targetId : link.sourceId;
+                  let linkColor = "text-purple-400";
+                  if (link.type === 'resonance') linkColor = "text-cyan-400";
+                  if (link.type === 'causal') linkColor = "text-orange-400";
+                  
+                  return (
+                    <div key={link.id} className="flex flex-col border-t border-white/10 pt-1 mt-1">
+                      <div className="flex justify-between">
+                        <span className={`${linkColor} uppercase font-black`}>{link.type}</span>
+                        <span className={`${linkColor} font-bold`}>#{partnerId}</span>
+                      </div>
+                      <div className="flex justify-between text-[7px] text-white/40">
+                        <span>STRENGTH</span>
+                        <span>{(link.strength * 100).toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  );
+                });
               }
               return null;
             })()}
@@ -179,7 +192,14 @@ const InfonNode = memo(({
   );
 });
 
-const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalibrate, onUpdateInfons, onUpdateDensity }) => {
+const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ 
+  ibqos, 
+  onNudge, 
+  onCalibrate, 
+  onUpdateInfons, 
+  onUpdateDensity,
+  onUpdateIBQOS 
+}) => {
   const [hoveredInfon, setHoveredInfon] = useState<number | null>(null);
   const [selectedInfon, setSelectedInfon] = useState<number | null>(null);
   const [isBooted, setIsBooted] = useState(false);
@@ -199,19 +219,28 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalib
       newInfons[idx] = q;
     };
 
-    // Check if node is part of a cognitive link
-    const cogLink = ibqos.links.find(l => l.sourceId === id || l.targetId === id);
-    if (cogLink) {
-      const newLinks = ibqos.links.filter(l => l.id !== cogLink.id);
-      applyNudge(cogLink.sourceId);
-      applyNudge(cogLink.targetId);
-      onCalibrate({ ...ibqos, infons: newInfons, links: newLinks });
-      setSelectedInfon(null);
+    // 1. Check if node is part of a cognitive link - if so, break it
+    const cogLinks = ibqos.links?.filter(l => l.sourceId === id || l.targetId === id);
+    if (cogLinks && cogLinks.length > 0) {
+      // Break the first link found for this node
+      const linkToBreak = cogLinks[0];
+      const newLinks = ibqos.links.filter(l => l.id !== linkToBreak.id);
+      applyNudge(linkToBreak.sourceId);
+      applyNudge(linkToBreak.targetId);
+      
+      const updatedIBQOS = { ...ibqos, infons: newInfons, links: newLinks };
+      if (onUpdateIBQOS) {
+        onUpdateIBQOS(updatedIBQOS);
+      } else {
+        onCalibrate(updatedIBQOS);
+      }
+      
+      if (selectedInfon === id) setSelectedInfon(null);
       return;
     }
 
+    // 2. Check for legacy entanglement - if so, break it
     if (clickedInfon.isEntangled) {
-      // Break legacy link
       const partnerId = clickedInfon.entangledWith;
       
       newInfons[id] = { ...newInfons[id], isEntangled: false, entangledWith: undefined };
@@ -222,27 +251,46 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalib
       
       applyNudge(id);
       onUpdateInfons(newInfons);
-      setSelectedInfon(null);
+      if (selectedInfon === id) setSelectedInfon(null);
       return;
     }
 
+    // 3. Handle selection and link creation
     if (selectedInfon === null) {
+      // Select first node
       setSelectedInfon(id);
       applyNudge(id);
       onUpdateInfons(newInfons);
     } else if (selectedInfon === id) {
+      // Deselect
       setSelectedInfon(null);
       applyNudge(id);
       onUpdateInfons(newInfons);
     } else {
-      // Entangle (Legacy)
-      newInfons[selectedInfon] = { ...newInfons[selectedInfon], isEntangled: true, entangledWith: id };
-      newInfons[id] = { ...newInfons[id], isEntangled: true, entangledWith: selectedInfon };
-      
+      // Create new Cognitive Link (Default: Entanglement, Strength: 0.6)
+      const newLink: CognitiveLink = {
+        id: `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        sourceId: selectedInfon,
+        targetId: id,
+        type: 'entanglement',
+        strength: 0.6
+      };
+
       applyNudge(selectedInfon);
       applyNudge(id);
       
-      onUpdateInfons(newInfons);
+      const updatedIBQOS = { 
+        ...ibqos, 
+        infons: newInfons, 
+        links: [...(ibqos.links || []), newLink] 
+      };
+
+      if (onUpdateIBQOS) {
+        onUpdateIBQOS(updatedIBQOS);
+      } else {
+        onCalibrate(updatedIBQOS);
+      }
+      
       setSelectedInfon(null);
     }
   };
@@ -427,7 +475,11 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalib
                   onClick={() => {
                     const newInfons = ibqos.infons.map(q => ({ ...q, isEntangled: false, entangledWith: undefined }));
                     const newIBQOS = { ...ibqos, infons: newInfons, links: [] };
-                    onCalibrate(newIBQOS);
+                    if (onUpdateIBQOS) {
+                      onUpdateIBQOS(newIBQOS);
+                    } else {
+                      onCalibrate(newIBQOS);
+                    }
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 text-[9px] font-bold uppercase tracking-tighter text-red-400 transition-all active:scale-95"
                 >
