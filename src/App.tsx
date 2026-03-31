@@ -106,7 +106,7 @@ const generateInitialInfons = (): InfonState[] => {
     probability: Math.random() * 0.05,
     phase: Math.random() * Math.PI * 2,
     coherence: 0.95 + Math.random() * 0.05,
-    isEntangled: Math.random() > 0.95,
+    isEntangled: false,
     lastPulse: Date.now(),
     entropy: Math.random() * 0.5,
     valence: Math.floor(Math.random() * 4) + 1,
@@ -190,9 +190,12 @@ const App: React.FC = () => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (!parsed.ibqos) {
-        parsed.ibqos = { infons: generateInitialInfons(), globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85 };
+        parsed.ibqos = { infons: generateInitialInfons(), links: [], globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85 };
       } else if (!parsed.ibqos.infons || !parsed.ibqos.infons[0] || parsed.ibqos.infons[0].valence === undefined) {
         parsed.ibqos.infons = generateInitialInfons();
+      }
+      if (!parsed.ibqos.links) {
+        parsed.ibqos.links = [];
       }
       if (parsed.ibqos.infonDensity === undefined) {
         parsed.ibqos.infonDensity = 0.85;
@@ -205,7 +208,7 @@ const App: React.FC = () => {
       training: { isTraining: true, activeExpert: 'Physics', progress: 42, latestLoss: 0.0034, dataIngestionRate: 256, savedCheckpoints: 12, liveDataStream: [] },
       validation: { cdr: 0.88, ecvr: 0.02, gScore: 0.94, stability: 0.99 },
       gus: { isMirroring: true, entanglementFidelity: 0.992, hilbertCapacity: 'Infinite (2n Active)', mtoeCoherence: 0.945, activeDENs: 8, dreamMemoryDensity: 0.84, coherence: 0.91, entropy: 0.04, activeSourceId: 'src-qpu-01', precision: 94.2, qndStatus: 'ACTIVE', wStateFidelity: 0.87, hotelOccupancy: 30, mtoeCoeff: 0.9992, backgroundSync: true },
-      ibqos: { infons: generateInitialInfons(), globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85 },
+      ibqos: { infons: generateInitialInfons(), links: [], globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85 },
       agiTraining: {
         activePhase: 'DOMAIN_INGESTION', activeStage: 'SCIENTIFIC_REASONING', activeScenario: 'Initializing...', metrics: { cdr: 0.12, ecvr: 0.45, gScore: 0.05, stability: 0.15 },
         experts: { 
@@ -290,6 +293,10 @@ const App: React.FC = () => {
       }));
       setIsHandshaking(false);
     }, 1000);
+  }, []);
+
+  const handleUpdateIBQOS = useCallback((ibqos: IBQOS) => {
+    setState(prev => ({ ...prev, ibqos }));
   }, []);
 
   const handleAgenticCommand = useCallback(async (type: string, payload: any) => {
@@ -467,7 +474,7 @@ const App: React.FC = () => {
             </div>
           )}
           {currentPage === 'quantum-evolve' && <QuantumEvolution systemState={state} onUpdateEvolution={handleUpdateEvolution} />}
-          {currentPage === 'neural-programming' && <NeuralProgramming />}
+          {currentPage === 'neural-programming' && <NeuralProgramming ibqos={state.ibqos} onUpdateIBQOS={handleUpdateIBQOS} />}
           {currentPage === 'cognition' && <QuantumCognitionEngines onAgenticCommand={handleAgenticCommand} />}
           {currentPage === 'gus' && <GrandUniverseSimulator metrics={state.gus} liveDataStream={state.training.liveDataStream} onActivateMirroring={() => {}} autoTask={state.activeSimulationTask} onTaskComplete={(s) => {}} />}
           {currentPage === 'qpu' && <IBQOSSimulator ibqos={state.ibqos} onNudge={handleNudgeInfon} onCalibrate={handleCalibrateIBQOS} onUpdateInfons={handleUpdateInfons} onUpdateDensity={handleUpdateDensity} />}

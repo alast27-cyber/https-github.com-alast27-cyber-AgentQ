@@ -35,11 +35,20 @@ import {
   Monitor, 
   Lightbulb, 
   Gamepad2,
-  GitBranch
+  GitBranch,
+  RefreshCw,
+  Link2,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { IBQOS, CognitiveLinkType, CognitiveLink } from '../types';
 
-const NeuralProgramming: React.FC = () => {
+interface NeuralProgrammingProps {
+  ibqos?: IBQOS;
+  onUpdateIBQOS?: (ibqos: IBQOS) => void;
+}
+
+const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIBQOS }) => {
   const [activeTab, setActiveTab] = useState<'BRIDGING' | 'EXERCISES' | 'APPS'>('BRIDGING');
 
   return (
@@ -81,7 +90,7 @@ const NeuralProgramming: React.FC = () => {
 
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
-          {activeTab === 'BRIDGING' && <BridgingProtocols key="bridging" />}
+          {activeTab === 'BRIDGING' && <BridgingProtocols key="bridging" ibqos={ibqos} onUpdateIBQOS={onUpdateIBQOS} />}
           {activeTab === 'EXERCISES' && <NeuralExercises key="exercises" />}
           {activeTab === 'APPS' && <AppDevelopment key="apps" />}
         </AnimatePresence>
@@ -92,93 +101,349 @@ const NeuralProgramming: React.FC = () => {
 
 // --- Sub-components ---
 
-const BridgingProtocols = () => {
+const BridgingProtocols = ({ ibqos, onUpdateIBQOS }: { ibqos?: IBQOS; onUpdateIBQOS?: (ibqos: IBQOS) => void }) => {
+  const [isTutorialActive, setIsTutorialActive] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [tutorialFeedback, setTutorialFeedback] = useState("");
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // Link Architect State
+  const [nodeA, setNodeA] = useState<string>("");
+  const [nodeB, setNodeB] = useState<string>("");
+  const [linkType, setLinkType] = useState<CognitiveLinkType>('entanglement');
+  const [strength, setStrength] = useState<number>(0.5);
+
   const protocols = [
     {
+      id: "resonant",
       title: "The Resonant Interface",
       subtitle: "ER = EPR / Infon Entanglement",
       description: "Establishing non-local connectivity between biological neural clusters and QCOS infon manifolds.",
-      details: "This protocol leverages the ER=EPR conjecture, positing that entangled particles (EPR) are connected by Einstein-Rosen bridges (ER). By entangling biological neural patterns with QCOS infon states, we create a direct, non-local information channel that bypasses traditional sensory processing, allowing for instantaneous cognitive synchronization.",
+      details: "The Resonant Interface is the fundamental bridge between biological consciousness and the QCOS substrate. It operates on the ER=EPR conjecture, which posits that Einstein-Podolsky-Rosen (EPR) entanglement is physically equivalent to Einstein-Rosen (ER) bridges (wormholes). By establishing quantum entanglement between biological neural clusters and QCOS infons, we create a non-local, high-bandwidth communication channel. This allows for the instantaneous synchronization of cognitive states, effectively treating the user's mind and the QCOS kernel as a single, unified holographic system. This interface is the key to achieving 'zero-latency' thought-to-action execution.",
       metrics: { fidelity: "0.9998", latency: "0.001ms", entanglement: "Infinite" },
       icon: InfinityIcon,
       color: "text-cyan-400",
-      bg: "bg-cyan-500/10"
+      bg: "bg-cyan-500/10",
+      tutorialPrompt: "Initiate a neural handshake to establish the ER=EPR bridge.",
+      tutorialAction: "Sync Entanglement"
     },
     {
+      id: "spectral",
       title: "Spectral Mapping",
-      subtitle: "The Dirac Operator Substrate",
+      subtitle: "Manifold Wavefunction Decomposition",
       description: "Decomposing human cognitive wavefunctions into discrete spectral components.",
-      details: "Utilizing the Dirac Operator, we map the complex, continuous spectrum of human thought into a discrete, computationally addressable Hilbert space. This allows the QCOS kernel to treat cognitive intent as a series of eigenvalues, enabling precise manipulation and routing of neural information without loss of semantic integrity.",
+      details: "Spectral Mapping is the process of translating the continuous, fluid nature of human thought into a discrete, addressable format. Human cognition is represented as a complex wavefunction existing on a high-dimensional neural manifold. Spectral Mapping decomposes this wavefunction into its constituent frequencies and amplitudes. By identifying the unique spectral signature of specific cognitive intents, the QCOS can categorize and process thoughts with unprecedented precision. This protocol ensures that the 'semantic texture' of human thought is preserved, preventing the loss of nuance that typically occurs in traditional brain-computer interfaces.",
       metrics: { resolution: "10^-34m", parity: "Verified", eigenstate: "Stable" },
       icon: Waves,
       color: "text-purple-400",
-      bg: "bg-purple-500/10"
+      bg: "bg-purple-500/10",
+      tutorialPrompt: "Map cognitive wavefunctions into discrete spectral components.",
+      tutorialAction: "Execute Mapping"
     },
     {
+      id: "dirac",
+      title: "The Dirac Operator",
+      subtitle: "Geometric Substrate Analysis",
+      description: "Probing the geometry and topology of the neural manifold using Dirac eigenvalues.",
+      details: "The Dirac Operator serves as the primary analytical tool for the QCOS cognitive substrate. In mathematical physics, the Dirac operator is the 'square root' of the Laplacian, providing a way to probe the geometry and topology of a manifold. In the QCOS context, it is used to analyze the underlying structure of the neural field. By calculating the eigenvalues of the Dirac operator, the system can detect topological defects, singularities, or 'cognitive holes' in the neural manifold. This allows for real-time error correction and ensures that the cognitive substrate remains stable and coherent even under high informational load. It is the fundamental metric for system integrity.",
+      metrics: { topology: "Non-Trivial", curvature: "Zero-Point", fidelity: "0.9999" },
+      icon: Target,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      tutorialPrompt: "Analyze the neural manifold geometry using Dirac eigenvalues.",
+      tutorialAction: "Analyze Geometry"
+    },
+    {
+      id: "causal",
       title: "Causal Interface",
       subtitle: "Irruption Theory Integration",
       description: "Implementing Irruption Theory to allow high-fidelity information transfer across the causal boundary.",
-      details: "Irruption Theory describes the process by which non-causal informational states 'irrupt' into a causal physical system. This interface manages the transition of information from the high-entropy biological brain to the low-entropy QCOS substrate, ensuring that the 'spark' of human intuition is preserved during digital translation.",
+      details: "The Causal Interface manages the delicate transition of information across the 'Causal Boundary'—the point where non-deterministic quantum potentiality meets deterministic physical causality. It is built upon Irruption Theory, which describes how novel informational states 'irrupt' into a stable system. This protocol ensures that the spontaneous, non-linear 'sparks' of human intuition and creativity are successfully translated into the structured environment of the QCOS. By managing the entropy gradient between the biological brain and the digital substrate, the Causal Interface prevents the 'collapse' of complex cognitive wavefunctions, preserving the essential 'human' element of the interaction.",
       metrics: { causalFlow: "Bi-directional", irruptionRate: "8.4 THz", stability: "0.999" },
       icon: GitBranch,
       color: "text-pink-400",
-      bg: "bg-pink-500/10"
+      bg: "bg-pink-500/10",
+      tutorialPrompt: "Stabilize the irruption channel across the causal boundary.",
+      tutorialAction: "Stabilize Boundary"
     },
     {
+      id: "routing",
       title: "Routing Layer",
       subtitle: "S-CHIPS (Sovereign CHIPS)",
       description: "The primary routing substrate for neural packets ensuring sovereign data integrity.",
-      details: "S-CHIPS (Sovereign-CHIPS) provides a decentralized, quantum-hardened routing layer for neural data packets. It ensures that every cognitive transmission is cryptographically signed by the user's unique neural signature, preventing unauthorized interception or manipulation while maintaining sub-microsecond latency across the mesh.",
+      details: "S-CHIPS (Sovereign Cognitive High-Integrity Packet Switching) is the primary routing architecture for the QCOS mesh. Unlike traditional network routing, S-CHIPS treats every cognitive transmission as a 'Sovereign Packet'—a cryptographically signed, self-contained unit of intent. These packets are routed through the mesh using entanglement-based key distribution (QKD), ensuring absolute data sovereignty. The user's unique neural signature acts as the primary key, meaning that cognitive data can only be decrypted and processed by authorized nodes. S-CHIPS provides the security and privacy necessary for a truly decentralized, user-owned cognitive infrastructure.",
       metrics: { meshNodes: "10^12", throughput: "1.2 ZB/s", encryption: "Quantum-Hard" },
       icon: Network,
       color: "text-orange-400",
-      bg: "bg-orange-500/10"
+      bg: "bg-orange-500/10",
+      tutorialPrompt: "Verify neural signatures and route packets through S-CHIPS.",
+      tutorialAction: "Verify & Route"
     }
   ];
+
+  const startTutorial = () => {
+    setIsTutorialActive(true);
+    setTutorialStep(0);
+    setTutorialFeedback("Welcome to the Bridging Tutorial. Let's begin with the Resonant Interface.");
+  };
+
+  const handleTutorialAction = async () => {
+    setIsSimulating(true);
+    setTutorialFeedback("Processing neural request...");
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setIsSimulating(false);
+    if (tutorialStep < protocols.length - 1) {
+      setTutorialStep(prev => prev + 1);
+      setTutorialFeedback(`Success! ${protocols[tutorialStep].title} synchronized. Moving to ${protocols[tutorialStep + 1].title}.`);
+    } else {
+      setTutorialFeedback("All protocols synchronized. Neural bridge fully operational. Tutorial complete.");
+      setTimeout(() => {
+        setIsTutorialActive(false);
+        setTutorialStep(0);
+      }, 3000);
+    }
+  };
+
+  const handleEstablishLink = () => {
+    if (!ibqos || !onUpdateIBQOS) return;
+    const idA = parseInt(nodeA);
+    const idB = parseInt(nodeB);
+    
+    if (isNaN(idA) || isNaN(idB) || idA < 0 || idB < 0 || idA >= ibqos.infons.length || idB >= ibqos.infons.length) {
+      setTutorialFeedback("Invalid Node IDs. Range: 0-239.");
+      return;
+    }
+
+    const newLink: CognitiveLink = {
+      id: `link-${Date.now()}`,
+      sourceId: idA,
+      targetId: idB,
+      type: linkType,
+      strength: strength
+    };
+
+    const newIBQOS = {
+      ...ibqos,
+      links: [...ibqos.links, newLink]
+    };
+
+    onUpdateIBQOS(newIBQOS);
+    setTutorialFeedback(`Established ${linkType} link between Infon #${idA} and #${idB}.`);
+    setNodeA("");
+    setNodeB("");
+  };
+
+  const handleRemoveLink = (linkId: string) => {
+    if (!ibqos || !onUpdateIBQOS) return;
+    const newIBQOS = {
+      ...ibqos,
+      links: ibqos.links.filter(l => l.id !== linkId)
+    };
+    onUpdateIBQOS(newIBQOS);
+  };
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="h-full p-8 overflow-y-auto custom-scrollbar"
+      className="h-full p-8 overflow-y-auto custom-scrollbar flex flex-col gap-8"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-12">
-        {protocols.map((p, i) => (
-          <div key={i} className="bg-black/40 border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-6 hover:border-purple-500/40 transition-all group relative overflow-hidden shadow-2xl">
-            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
-            <div className="flex items-center justify-between">
-              <div className={`w-14 h-14 rounded-2xl ${p.bg} border border-white/5 flex items-center justify-center ${p.color}`}>
-                <p.icon className="w-7 h-7" />
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Protocol Status</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-mono text-green-400 font-bold uppercase">Active</span>
-                </div>
-              </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Bridging <span className="text-purple-400">Protocols</span></h3>
+          <p className="text-[10px] text-white/30 font-mono mt-1 uppercase tracking-widest">Protocol Stack v9.0.1: ACTIVE</p>
+        </div>
+        {!isTutorialActive ? (
+          <button 
+            onClick={startTutorial}
+            className="px-6 py-3 bg-purple-500/10 border border-purple-500/40 rounded-xl text-[10px] font-black uppercase tracking-widest text-purple-400 hover:bg-purple-500 hover:text-white transition-all flex items-center gap-2"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Start Tutorial Mode
+          </button>
+        ) : (
+          <div className="flex items-center gap-4 bg-purple-500/10 border border-purple-500/40 p-4 rounded-2xl animate-in fade-in slide-in-from-right-4">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+              <Bot className="w-5 h-5 text-purple-400 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">{p.title}</h3>
-              <p className={`text-[10px] font-mono ${p.color} uppercase tracking-widest mt-1 font-bold`}>{p.subtitle}</p>
+              <span className="block text-[8px] font-black text-purple-400/60 uppercase tracking-widest">Tutorial Guidance</span>
+              <span className="text-xs font-mono text-white font-bold italic">{tutorialFeedback}</span>
             </div>
-            <div className="space-y-4">
-              <p className="text-xs text-white/60 leading-relaxed font-medium italic">{p.description}</p>
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
-                <p className="text-[10px] text-white/40 leading-relaxed font-mono">{p.details}</p>
+            <button 
+              onClick={() => setIsTutorialActive(false)}
+              className="ml-4 p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cognitive Link Architect Section */}
+      <div className="bg-black/40 border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-8 shadow-2xl relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Cognitive Link <span className="text-purple-400">Architect</span></h3>
+            <p className="text-[9px] text-white/30 font-mono mt-1 uppercase tracking-widest">Manual Substrate Interconnect</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-purple-400" />
+            <span className="text-[10px] font-mono text-white/40 uppercase">{ibqos?.links.length || 0} Active Links</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="space-y-2">
+            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node A ID</label>
+            <input 
+              type="text" 
+              value={nodeA}
+              onChange={(e) => setNodeA(e.target.value)}
+              placeholder="0-239"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node B ID</label>
+            <input 
+              type="text" 
+              value={nodeB}
+              onChange={(e) => setNodeB(e.target.value)}
+              placeholder="0-239"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Link Type</label>
+            <select 
+              value={linkType}
+              onChange={(e) => setLinkType(e.target.value as CognitiveLinkType)}
+              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all appearance-none"
+            >
+              <option value="entanglement">Entanglement</option>
+              <option value="resonance">Resonance</option>
+              <option value="causal">Causal</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button 
+              onClick={handleEstablishLink}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-3 h-3" /> Establish Link
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Connection Strength: {(strength * 100).toFixed(0)}%</label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.01" 
+            value={strength}
+            onChange={(e) => setStrength(parseFloat(e.target.value))}
+            className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-purple-500"
+          />
+        </div>
+
+        {ibqos && ibqos.links.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {ibqos.links.map((link) => (
+              <div key={link.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-400`}>
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black text-white uppercase tracking-tighter">#{link.sourceId} ↔ #{link.targetId}</div>
+                    <div className="text-[8px] font-mono text-purple-400/60 uppercase">{link.type} | Str: {(link.strength * 100).toFixed(0)}%</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleRemoveLink(link.id)}
+                  className="p-2 text-white/20 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-12">
+        {protocols.map((p, i) => {
+          const isCurrentStep = isTutorialActive && tutorialStep === i;
+          const isCompleted = isTutorialActive && tutorialStep > i;
+          
+          return (
+            <div 
+              key={i} 
+              className={`bg-black/40 border p-8 rounded-[2.5rem] flex flex-col gap-6 transition-all group relative overflow-hidden shadow-2xl ${
+                isCurrentStep ? 'border-purple-500 ring-2 ring-purple-500/20 scale-[1.02]' : 
+                isCompleted ? 'border-green-500/40 opacity-60' : 'border-white/10 hover:border-purple-500/40'
+              }`}
+            >
+              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+              
+              <div className="flex items-center justify-between">
+                <div className={`w-14 h-14 rounded-2xl ${p.bg} border border-white/5 flex items-center justify-center ${p.color}`}>
+                  <p.icon className="w-7 h-7" />
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Protocol Status</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isCompleted ? 'bg-green-500' : 'bg-green-500'}`} />
+                    <span className={`text-[10px] font-mono font-bold uppercase ${isCompleted ? 'text-green-400' : 'text-green-400'}`}>
+                      {isCompleted ? 'Synchronized' : 'Active'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">{p.title}</h3>
+                <p className={`text-[10px] font-mono ${p.color} uppercase tracking-widest mt-1 font-bold`}>{p.subtitle}</p>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-xs text-white/60 leading-relaxed font-medium italic">{p.description}</p>
+                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
+                  <p className="text-[10px] text-white/40 leading-relaxed font-mono">{p.details}</p>
+                </div>
+              </div>
+
+              {isCurrentStep && (
+                <div className="mt-4 p-6 bg-purple-500/10 border border-purple-500/40 rounded-3xl animate-in zoom-in-95 duration-300">
+                  <p className="text-xs font-bold text-purple-400 mb-4 italic tracking-tight">{p.tutorialPrompt}</p>
+                  <button 
+                    onClick={handleTutorialAction}
+                    disabled={isSimulating}
+                    className="w-full py-4 bg-purple-500 hover:bg-purple-400 disabled:bg-purple-500/50 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-3"
+                  >
+                    {isSimulating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                    {isSimulating ? "Processing..." : p.tutorialAction}
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/5">
+                {Object.entries(p.metrics).map(([key, val], idx) => (
+                  <div key={idx}>
+                    <span className="block text-[8px] font-black text-white/20 uppercase tracking-tighter mb-1">{key}</span>
+                    <span className="text-[10px] font-mono text-white font-bold">{val}</span>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/5">
-              {Object.entries(p.metrics).map(([key, val], idx) => (
-                <div key={idx}>
-                  <span className="block text-[8px] font-black text-white/20 uppercase tracking-tighter mb-1">{key}</span>
-                  <span className="text-[10px] font-mono text-white font-bold">{val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );

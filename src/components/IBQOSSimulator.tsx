@@ -16,7 +16,8 @@ import {
   ShieldCheck, 
   Target, 
   Scale,
-  Gauge
+  Gauge,
+  Trash2
 } from 'lucide-react';
 import { IBQOS, InfonState } from '../types';
 
@@ -37,12 +38,16 @@ const ROWS = 12;
  */
 const InfonNode = memo(({ 
   infon, 
+  ibqos,
   isHovered, 
+  isSelected,
   onHover, 
   onNudge 
 }: { 
   infon: InfonState; 
+  ibqos: IBQOS;
   isHovered: boolean; 
+  isSelected: boolean;
   onHover: (id: number | null) => void; 
   onNudge: (id: number) => void;
 }) => {
@@ -84,6 +89,9 @@ const InfonNode = memo(({
             boxShadow: infon.probability > 0.1 ? `0 0 ${20 * infon.probability}px ${phaseColor}` : 'none'
           }}
         />
+        {isSelected && (
+          <div className="absolute inset-0 border-2 border-white animate-pulse rounded-sm z-30 shadow-[0_0_10px_white]" />
+        )}
         {infon.isEntangled && (
           <>
             <div className="absolute inset-0 border border-purple-500/50 animate-pulse rounded-sm" />
@@ -91,6 +99,25 @@ const InfonNode = memo(({
             <div className="absolute -inset-2 border border-cyan-400/10 rounded-sm animate-[spin_6s_linear_infinite_reverse]" />
           </>
         )}
+        {(() => {
+          const cogLink = ibqos?.links?.find(l => l.sourceId === infon.id || l.targetId === infon.id);
+          if (!cogLink) return null;
+          let color = "border-purple-500/50";
+          let glow = "border-purple-400/20";
+          if (cogLink.type === 'resonance') {
+            color = "border-cyan-500/50";
+            glow = "border-cyan-400/20";
+          } else if (cogLink.type === 'causal') {
+            color = "border-orange-500/50";
+            glow = "border-orange-400/20";
+          }
+          return (
+            <>
+              <div className={`absolute inset-0 border ${color} animate-pulse rounded-sm`} />
+              <div className={`absolute -inset-1 border ${glow} rounded-sm animate-pulse`} />
+            </>
+          );
+        })()}
       </div>
 
       {/* Hover Tooltip Overlay */}
@@ -126,6 +153,25 @@ const InfonNode = memo(({
               <span className="text-white/40 uppercase">Hopping</span>
               <span className="text-orange-400 font-bold">{infon.hopping.toFixed(3)}</span>
             </div>
+            {infon.isEntangled && (
+              <div className="flex justify-between border-t border-purple-500/30 pt-1 mt-1">
+                <span className="text-purple-400 uppercase font-black">Entangled</span>
+                <span className="text-purple-300 font-bold">#{infon.entangledWith}</span>
+              </div>
+            )}
+            {(() => {
+              const cogLink = ibqos?.links?.find(l => l.sourceId === infon.id || l.targetId === infon.id);
+              if (cogLink) {
+                const partnerId = cogLink.sourceId === infon.id ? cogLink.targetId : cogLink.sourceId;
+                return (
+                  <div className="flex justify-between border-t border-purple-500/30 pt-1 mt-1">
+                    <span className="text-cyan-400 uppercase font-black">{cogLink.type}</span>
+                    <span className="text-cyan-300 font-bold">#{partnerId}</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       )}
@@ -135,9 +181,71 @@ const InfonNode = memo(({
 
 const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalibrate, onUpdateInfons, onUpdateDensity }) => {
   const [hoveredInfon, setHoveredInfon] = useState<number | null>(null);
+  const [selectedInfon, setSelectedInfon] = useState<number | null>(null);
   const [isBooted, setIsBooted] = useState(false);
   const [isBooting, setIsBooting] = useState(false);
   const [bootProgress, setBootProgress] = useState(0);
+
+  const handleNodeClick = (id: number) => {
+    const newInfons = [...ibqos.infons];
+    const clickedInfon = newInfons[id];
+
+    // Helper to apply nudge effect (probability boost, phase shift)
+    const applyNudge = (idx: number) => {
+      const q = { ...newInfons[idx] };
+      q.probability = Math.min(1, q.probability + 0.2);
+      q.phase = (q.phase + Math.PI / 4) % (Math.PI * 2);
+      q.lastPulse = Date.now();
+      newInfons[idx] = q;
+    };
+
+    // Check if node is part of a cognitive link
+    const cogLink = ibqos.links.find(l => l.sourceId === id || l.targetId === id);
+    if (cogLink) {
+      const newLinks = ibqos.links.filter(l => l.id !== cogLink.id);
+      applyNudge(cogLink.sourceId);
+      applyNudge(cogLink.targetId);
+      onCalibrate({ ...ibqos, infons: newInfons, links: newLinks });
+      setSelectedInfon(null);
+      return;
+    }
+
+    if (clickedInfon.isEntangled) {
+      // Break legacy link
+      const partnerId = clickedInfon.entangledWith;
+      
+      newInfons[id] = { ...newInfons[id], isEntangled: false, entangledWith: undefined };
+      if (partnerId !== undefined && newInfons[partnerId]) {
+        newInfons[partnerId] = { ...newInfons[partnerId], isEntangled: false, entangledWith: undefined };
+        applyNudge(partnerId);
+      }
+      
+      applyNudge(id);
+      onUpdateInfons(newInfons);
+      setSelectedInfon(null);
+      return;
+    }
+
+    if (selectedInfon === null) {
+      setSelectedInfon(id);
+      applyNudge(id);
+      onUpdateInfons(newInfons);
+    } else if (selectedInfon === id) {
+      setSelectedInfon(null);
+      applyNudge(id);
+      onUpdateInfons(newInfons);
+    } else {
+      // Entangle (Legacy)
+      newInfons[selectedInfon] = { ...newInfons[selectedInfon], isEntangled: true, entangledWith: id };
+      newInfons[id] = { ...newInfons[id], isEntangled: true, entangledWith: selectedInfon };
+      
+      applyNudge(selectedInfon);
+      applyNudge(id);
+      
+      onUpdateInfons(newInfons);
+      setSelectedInfon(null);
+    }
+  };
 
   // Memoized KPIs
   const kpis = useMemo(() => {
@@ -314,14 +422,110 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalib
                 <PatternBtn onClick={() => injectPattern('GHZ')} label="GHZ" icon={<Share2 className="w-3 h-3" />} />
                 <PatternBtn onClick={() => injectPattern('WAVE')} label="Wave" icon={<Activity className="w-3 h-3" />} />
                 <PatternBtn onClick={() => injectPattern('RANDOM')} label="Noise" icon={<Zap className="w-3 h-3" />} />
+                <div className="w-px h-4 bg-white/10 mx-1 self-center" />
+                <button 
+                  onClick={() => {
+                    const newInfons = ibqos.infons.map(q => ({ ...q, isEntangled: false, entangledWith: undefined }));
+                    const newIBQOS = { ...ibqos, infons: newInfons, links: [] };
+                    onCalibrate(newIBQOS);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 text-[9px] font-bold uppercase tracking-tighter text-red-400 transition-all active:scale-95"
+                >
+                  <Trash2 className="w-3 h-3" /> Clear Links
+                </button>
               </div>
             </div>
           )}
         </div>
 
         <div className={`flex-1 relative min-h-0 overflow-hidden bg-black/40 rounded-xl border border-white/5 p-4 flex items-center justify-center shadow-inner transition-all duration-1000 ${isBooted ? 'opacity-100' : 'opacity-10 scale-105 blur-sm'}`}>
+          {/* Cognitive Links Layer */}
+          <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+            <svg className="w-full h-full" viewBox={`0 0 ${COLS * 100} ${ROWS * 100}`} preserveAspectRatio="none">
+              {(() => {
+                const renderedLinks: React.ReactNode[] = [];
+                
+                // Render legacy entanglement links
+                const entangled = ibqos.infons.filter(q => q.isEntangled && q.entangledWith !== undefined && q.entangledWith > q.id);
+                for (const q1 of entangled) {
+                  const q2 = ibqos.infons[q1.entangledWith!];
+                  if (!q2) continue;
+                    
+                  const x1 = (q1.id % COLS) * 100 + 50;
+                  const y1 = Math.floor(q1.id / COLS) * 100 + 50;
+                  const x2 = (q2.id % COLS) * 100 + 50;
+                  const y2 = Math.floor(q2.id / COLS) * 100 + 50;
+                  
+                  renderedLinks.push(
+                    <g key={`legacy-link-${q1.id}-${q2.id}`}>
+                      <line 
+                        x1={x1} y1={y1} x2={x2} y2={y2} 
+                        stroke="rgba(168, 85, 247, 0.4)" 
+                        strokeWidth="12" 
+                        strokeLinecap="round"
+                        className="animate-pulse"
+                      />
+                      <line 
+                        x1={x1} y1={y1} x2={x2} y2={y2} 
+                        stroke="rgba(168, 85, 247, 0.8)" 
+                        strokeWidth="4" 
+                        strokeLinecap="round"
+                        className="animate-quantum-pulse"
+                      />
+                    </g>
+                  );
+                }
+
+                // Render new Cognitive Links
+                if (ibqos.links) {
+                  for (const link of ibqos.links) {
+                    const q1 = ibqos.infons[link.sourceId];
+                    const q2 = ibqos.infons[link.targetId];
+                    if (!q1 || !q2) continue;
+
+                    const x1 = (q1.id % COLS) * 100 + 50;
+                    const y1 = Math.floor(q1.id / COLS) * 100 + 50;
+                    const x2 = (q2.id % COLS) * 100 + 50;
+                    const y2 = Math.floor(q2.id / COLS) * 100 + 50;
+
+                    let color = "#a855f7"; // purple
+                    if (link.type === 'resonance') color = "#22d3ee"; // cyan
+                    if (link.type === 'causal') color = "#fb923c"; // orange
+
+                    renderedLinks.push(
+                      <g key={`cog-link-${link.id}`}>
+                        <line 
+                          x1={x1} y1={y1} x2={x2} y2={y2} 
+                          stroke={color} 
+                          strokeWidth={2 + link.strength * 10} 
+                          strokeLinecap="round"
+                          className="animate-quantum-pulse"
+                          style={{ opacity: 0.2 + link.strength * 0.6 }}
+                        />
+                        {link.type === 'causal' && (
+                          <circle cx={x2} cy={y2} r="6" fill={color} className="animate-ping" />
+                        )}
+                        {link.type === 'resonance' && (
+                          <line 
+                            x1={x1} y1={y1} x2={x2} y2={y2} 
+                            stroke={color} 
+                            strokeWidth="1" 
+                            strokeDasharray="4 4"
+                            className="animate-pulse"
+                          />
+                        )}
+                      </g>
+                    );
+                  }
+                }
+
+                return renderedLinks;
+              })()}
+            </svg>
+          </div>
+
           <div 
-            className="grid gap-2 w-full h-full max-w-[1200px]"
+            className="grid gap-2 w-full h-full max-w-[1200px] relative z-20"
             style={{ 
               gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${ROWS}, minmax(0, 1fr))` 
@@ -331,9 +535,11 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ ibqos, onNudge, onCalib
               <InfonNode 
                 key={q.id} 
                 infon={q} 
+                ibqos={ibqos}
                 isHovered={hoveredInfon === q.id} 
+                isSelected={selectedInfon === q.id}
                 onHover={handleHoverChange} 
-                onNudge={onNudge} 
+                onNudge={handleNodeClick} 
               />
             ))}
           </div>

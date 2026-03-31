@@ -68,6 +68,15 @@ body {
   to { transform: rotate(0deg); }
 }
 
+@keyframes quantum-pulse {
+  0%, 100% { opacity: 0.3; stroke-width: 2; filter: blur(1px); }
+  50% { opacity: 1; stroke-width: 6; filter: blur(4px); }
+}
+
+.animate-quantum-pulse {
+  animation: quantum-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .holographic-grid {
   background-image: radial-gradient(circle, #00ffcc 1px, transparent 1px);
   background-size: 30px 30px;

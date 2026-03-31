@@ -227,6 +227,7 @@ export interface InfonState {
   phase: number;
   coherence: number;
   isEntangled: boolean;
+  entangledWith?: number;
   lastPulse: number;
   entropy: number;
   valence: number;
@@ -234,8 +235,19 @@ export interface InfonState {
   hopping: number;
 }
 
+export type CognitiveLinkType = 'entanglement' | 'resonance' | 'causal';
+
+export interface CognitiveLink {
+  id: string;
+  sourceId: number;
+  targetId: number;
+  type: CognitiveLinkType;
+  strength: number;
+}
+
 export interface IBQOS {
   infons: InfonState[];
+  links: CognitiveLink[];
   globalCoherence: number;
   temperature: number;
   noiseFloor: number;
