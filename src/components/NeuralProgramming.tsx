@@ -475,14 +475,18 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node B ID</label>
             <div className="flex gap-2">
               <input 
-                type="number" 
-                min="0"
-                max="239"
+                list="node-options"
+                type="text"
                 value={nodeB}
                 onChange={(e) => setNodeB(e.target.value)}
-                placeholder="0-239"
+                placeholder="Search Node B (0-239)"
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
               />
+              <datalist id="node-options">
+                {Array.from({ length: 240 }).map((_, i) => (
+                  <option key={i} value={i.toString()} />
+                ))}
+              </datalist>
               <button 
                 onClick={() => nodeB && onNudge && onNudge(parseInt(nodeB))}
                 className="px-3 py-3 bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
@@ -536,6 +540,28 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center px-2">
+            <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block">Cognitive Link Density: {(ibqos?.cognitiveLinkDensity ?? 0.5).toFixed(2)}</label>
+          </div>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.01" 
+            value={ibqos?.cognitiveLinkDensity ?? 0.5}
+            onChange={(e) => {
+              if (ibqos && onUpdateIBQOS) {
+                onUpdateIBQOS({
+                  ...ibqos,
+                  cognitiveLinkDensity: parseFloat(e.target.value)
+                });
+              }
+            }}
+            className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-cyan-500"
+          />
         </div>
 
         <div className="space-y-2">
@@ -645,22 +671,23 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                     <g key={`bg-node-group-${id}`}>
                       {isEntangled && (
                         <circle 
-                          cx={`${x}%`} cy={`${y}%`} r="3"
+                          cx={`${x}%`} cy={`${y}%`} r="4"
                           fill="none"
                           stroke="#a855f7"
-                          strokeWidth="0.5"
-                          strokeDasharray="1 1"
+                          strokeWidth="1"
+                          strokeDasharray="2 2"
                           className="animate-spin-slow"
+                          style={{ filter: 'drop-shadow(0 0 3px #a855f7)' }}
                         />
                       )}
                       <circle 
                         key={`bg-node-${id}`}
-                        cx={`${x}%`} cy={`${y}%`} r={isInvolved || isEntangled ? "2" : "0.8"}
+                        cx={`${x}%`} cy={`${y}%`} r={isInvolved || isEntangled ? "2.5" : "0.8"}
                         fill={id.toString() === nodeA ? "#a855f7" : id.toString() === nodeB ? "#06b6d4" : isEntangled ? "#a855f7" : isInvolved ? "white" : "rgba(255,255,255,0.05)"}
                         className={`cursor-pointer transition-all duration-300 ${isInvolved || isEntangled || id.toString() === nodeA || id.toString() === nodeB ? 'opacity-100' : 'hover:fill-cyan-400 hover:opacity-100 opacity-20'}`}
                         onClick={() => handleNodeSelect(id)}
                       >
-                        <title>Infon #{id} {isEntangled ? '(Entangled)' : ''}</title>
+                        <title>Infon #{id} {isEntangled ? `(Entangled with #${ibqos.infons[id]?.entangledWith})` : ''}</title>
                       </circle>
                     </g>
                   );

@@ -111,7 +111,9 @@ const generateInitialInfons = (): InfonState[] => {
     entropy: Math.random() * 0.5,
     valence: Math.floor(Math.random() * 4) + 1,
     loops: Math.floor(Math.random() * 3),
-    hopping: Math.random() * 0.2
+    hopping: Math.random() * 0.2,
+    quantizedState: 'ground',
+    lastMeasurement: Date.now()
   }));
 };
 
@@ -208,7 +210,7 @@ const App: React.FC = () => {
       training: { isTraining: true, activeExpert: 'Physics', progress: 42, latestLoss: 0.0034, dataIngestionRate: 256, savedCheckpoints: 12, liveDataStream: [] },
       validation: { cdr: 0.88, ecvr: 0.02, gScore: 0.94, stability: 0.99 },
       gus: { isMirroring: true, entanglementFidelity: 0.992, hilbertCapacity: 'Infinite (2n Active)', mtoeCoherence: 0.945, activeDENs: 8, dreamMemoryDensity: 0.84, coherence: 0.91, entropy: 0.04, activeSourceId: 'src-qpu-01', precision: 94.2, qndStatus: 'ACTIVE', wStateFidelity: 0.87, hotelOccupancy: 30, mtoeCoeff: 0.9992, backgroundSync: true },
-      ibqos: { infons: generateInitialInfons(), links: [], globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85 },
+      ibqos: { infons: generateInitialInfons(), links: [], globalCoherence: 0.998, temperature: 15.2, noiseFloor: 0.0012, informationalHamiltonian: 1.0, diracEigenvalue: 0.5, infonDensity: 0.85, cognitiveLinkDensity: 0.5 },
       agiTraining: {
         activePhase: 'DOMAIN_INGESTION', activeStage: 'SCIENTIFIC_REASONING', activeScenario: 'Initializing...', metrics: { cdr: 0.12, ecvr: 0.45, gScore: 0.05, stability: 0.15 },
         experts: { 

@@ -17,7 +17,8 @@ import {
   Target, 
   Scale,
   Gauge,
-  Trash2
+  Trash2,
+  Link2
 } from 'lucide-react';
 import { IBQOS, InfonState, CognitiveLink } from '../types';
 
@@ -94,6 +95,13 @@ const InfonNode = memo(({
           <div className="absolute inset-0 border-2 border-white animate-pulse rounded-sm z-30 shadow-[0_0_10px_white]" />
         )}
         {infon.isEntangled && (
+          <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-purple-500 rounded-full z-40 shadow-[0_0_5px_#a855f7]" />
+        )}
+        {ibqos?.links?.some(l => l.sourceId === infon.id || l.targetId === infon.id) && (
+          <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-cyan-500 rounded-full z-40 shadow-[0_0_5px_#06b6d4]" />
+        )}
+
+        {infon.isEntangled && (
           <>
             <div className="absolute inset-0 border border-purple-500/50 animate-pulse rounded-sm" />
             <div className="absolute -inset-1 border border-purple-400/20 rounded-sm animate-[spin_4s_linear_infinite]" />
@@ -141,6 +149,14 @@ const InfonNode = memo(({
             <div className="flex justify-between">
               <span className="text-white/40 uppercase">Entropy</span>
               <span className="text-purple-400 font-bold">{infon.entropy.toFixed(2)} S</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/40 uppercase">State</span>
+              <span className="text-cyan-400 font-bold uppercase">{infon.quantizedState}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/40 uppercase">Measured</span>
+              <span className="text-white font-mono">{new Date(infon.lastMeasurement).toLocaleTimeString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-white/40 uppercase">Valence</span>
@@ -201,7 +217,7 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
   onUpdateIBQOS 
 }) => {
   const [hoveredInfon, setHoveredInfon] = useState<number | null>(null);
-  const [selectedInfon, setSelectedInfon] = useState<number | null>(null);
+  const [selectedInfons, setSelectedInfons] = useState<number[]>([]);
   const [isBooted, setIsBooted] = useState(false);
   const [isBooting, setIsBooting] = useState(false);
   const [bootProgress, setBootProgress] = useState(0);
@@ -235,7 +251,7 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
         onCalibrate(updatedIBQOS);
       }
       
-      if (selectedInfon === id) setSelectedInfon(null);
+      if (selectedInfons.includes(id)) setSelectedInfons(selectedInfons.filter(i => i !== id));
       return;
     }
 
@@ -251,48 +267,32 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
       
       applyNudge(id);
       onUpdateInfons(newInfons);
-      if (selectedInfon === id) setSelectedInfon(null);
+      if (selectedInfons.includes(id)) setSelectedInfons(selectedInfons.filter(i => i !== id));
       return;
     }
 
-    // 3. Handle selection and link creation
-    if (selectedInfon === null) {
-      // Select first node
-      setSelectedInfon(id);
+    // 3. Handle selection
+    if (selectedInfons.includes(id)) {
+      setSelectedInfons(selectedInfons.filter(i => i !== id));
       applyNudge(id);
       onUpdateInfons(newInfons);
-    } else if (selectedInfon === id) {
-      // Deselect
-      setSelectedInfon(null);
+    } else if (selectedInfons.length < 2) {
+      setSelectedInfons([...selectedInfons, id]);
       applyNudge(id);
       onUpdateInfons(newInfons);
-    } else {
-      // Create new Cognitive Link (Default: Entanglement, Strength: 0.6)
-      const newLink: CognitiveLink = {
-        id: `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        sourceId: selectedInfon,
-        targetId: id,
-        type: 'entanglement',
-        strength: 0.6
-      };
-
-      applyNudge(selectedInfon);
-      applyNudge(id);
-      
-      const updatedIBQOS = { 
-        ...ibqos, 
-        infons: newInfons, 
-        links: [...(ibqos.links || []), newLink] 
-      };
-
-      if (onUpdateIBQOS) {
-        onUpdateIBQOS(updatedIBQOS);
-      } else {
-        onCalibrate(updatedIBQOS);
-      }
-      
-      setSelectedInfon(null);
     }
+  };
+
+  const handleEntangleSelectedNodes = () => {
+    if (selectedInfons.length !== 2 || !ibqos || !onUpdateInfons) return;
+    const [idA, idB] = selectedInfons;
+
+    const newInfons = [...ibqos.infons];
+    newInfons[idA] = { ...newInfons[idA], isEntangled: true, entangledWith: idB };
+    newInfons[idB] = { ...newInfons[idB], isEntangled: true, entangledWith: idA };
+
+    onUpdateInfons(newInfons);
+    setSelectedInfons([]);
   };
 
   // Memoized KPIs
@@ -315,6 +315,20 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
       logicalInfons: Math.floor(total / 40)
     };
   }, [ibqos.infons, ibqos.links, ibqos.noiseFloor]);
+
+  const handleRemoveLink = (linkId: string) => {
+    if (!ibqos || !onUpdateIBQOS) return;
+    const link = ibqos.links.find(l => l.id === linkId);
+    if (link && onNudge) {
+      onNudge(link.sourceId);
+      onNudge(link.targetId);
+    }
+    const newIBQOS = {
+      ...ibqos,
+      links: ibqos.links.filter(l => l.id !== linkId)
+    };
+    onUpdateIBQOS(newIBQOS);
+  };
 
   const handleBoot = () => {
     setIsBooting(true);
@@ -382,7 +396,7 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
   return (
     <div className="flex flex-col h-full gap-6 animate-in fade-in duration-700">
       {/* Simulation Telemetry Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <MetricTile 
           icon={<Thermometer className="w-4 h-4 text-orange-400" />} 
           label="Lattice Temp" 
@@ -406,6 +420,13 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
           label="Infon Density" 
           value={ibqos.infonDensity ?? 0.85} 
           onChange={(val) => onUpdateDensity && onUpdateDensity(val)}
+          status={isBooted ? "Active" : "Idle"}
+        />
+        <SliderMetricTile 
+          icon={<Waypoints className="w-4 h-4 text-purple-400" />} 
+          label="Cognitive Link Density" 
+          value={ibqos.cognitiveLinkDensity ?? 0.5} 
+          onChange={(val) => onUpdateIBQOS && onUpdateIBQOS({...ibqos, cognitiveLinkDensity: val})}
           status={isBooted ? "Active" : "Idle"}
         />
         <div className="flex flex-col gap-2">
@@ -475,6 +496,14 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
                 <PatternBtn onClick={() => injectPattern('WAVE')} label="Wave" icon={<Activity className="w-3 h-3" />} />
                 <PatternBtn onClick={() => injectPattern('RANDOM')} label="Noise" icon={<Zap className="w-3 h-3" />} />
                 <div className="w-px h-4 bg-white/10 mx-1 self-center" />
+                {selectedInfons.length === 2 && (
+                  <button 
+                    onClick={handleEntangleSelectedNodes}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-500/50 text-[9px] font-bold uppercase tracking-tighter text-purple-400 transition-all active:scale-95"
+                  >
+                    <Share2 className="w-3 h-3" /> Entangle Nodes
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     const newInfons = ibqos.infons.map(q => ({ ...q, isEntangled: false, entangledWith: undefined }));
@@ -593,7 +622,7 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
                 infon={q} 
                 ibqos={ibqos}
                 isHovered={hoveredInfon === q.id} 
-                isSelected={selectedInfon === q.id}
+                isSelected={selectedInfons.includes(q.id)}
                 onHover={handleHoverChange} 
                 onNudge={handleNodeClick} 
               />
@@ -631,6 +660,43 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
             <span className="text-[9px] font-bold uppercase tracking-widest">Virtual Qernel Plane</span>
           </div>
         </div>
+        {ibqos && ibqos.links.length > 0 && (
+          <div className="mt-8 border-t border-white/5 pt-8">
+            <h4 className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-4 px-2">Active Link Registry</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ibqos.links.map((link) => (
+                <div key={link.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${link.type === 'resonance' ? 'bg-cyan-500/10 text-cyan-400' : link.type === 'causal' ? 'bg-orange-500/10 text-orange-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                      <Link2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">{link.type}</span>
+                      <span className="text-[8px] font-mono text-white/40">ID: {link.id.slice(-6)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-[8px] font-black text-white/20 uppercase block">Nodes</span>
+                      <span className="text-[10px] font-mono text-white">#{link.sourceId} ↔ #{link.targetId}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] font-black text-white/20 uppercase block">Strength</span>
+                      <span className="text-[10px] font-mono text-white">{(link.strength * 100).toFixed(0)}%</span>
+                    </div>
+                    <button 
+                      onClick={() => handleRemoveLink(link.id)}
+                      className="p-2 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-400 transition-colors"
+                      title="Remove Link"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -724,6 +790,28 @@ const InputMetricTile: React.FC<{ icon: React.ReactNode, label: string, value: n
       value={value} 
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       className="bg-transparent border-b border-white/20 text-lg font-bold font-mono text-white tracking-tighter focus:outline-none focus:border-cyan-400 w-full"
+    />
+    <div className="flex items-center gap-1.5 mt-1">
+      <div className={`w-1.5 h-1.5 rounded-full ${status === 'Stable' || status === 'Optimal' || status === 'Active' ? 'bg-green-500 shadow-[0_0_5px_green]' : 'bg-white/20'}`} />
+      <span className={`text-[8px] font-bold uppercase ${status === 'Stable' || status === 'Optimal' || status === 'Active' ? 'text-green-500/60' : 'text-white/20'}`}>{status}</span>
+    </div>
+  </div>
+);
+
+const SliderMetricTile: React.FC<{ icon: React.ReactNode, label: string, value: number, onChange: (val: number) => void, status: string }> = ({ icon, label, value, onChange, status }) => (
+  <div className="glass-panel p-4 rounded-xl border border-white/5 bg-black/40 flex flex-col gap-1">
+    <div className="flex items-center gap-2 mb-1">
+      {icon}
+      <span className="text-[9px] uppercase font-bold text-white/40 tracking-widest">{label}: {value.toFixed(2)}</span>
+    </div>
+    <input 
+      type="range" 
+      min="0" 
+      max="1" 
+      step="0.01" 
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
     />
     <div className="flex items-center gap-1.5 mt-1">
       <div className={`w-1.5 h-1.5 rounded-full ${status === 'Stable' || status === 'Optimal' || status === 'Active' ? 'bg-green-500 shadow-[0_0_5px_green]' : 'bg-white/20'}`} />

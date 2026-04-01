@@ -233,6 +233,8 @@ export interface InfonState {
   valence: number;
   loops: number;
   hopping: number;
+  quantizedState: string;
+  lastMeasurement: number;
 }
 
 export type CognitiveLinkType = 'entanglement' | 'resonance' | 'causal';
@@ -254,6 +256,7 @@ export interface IBQOS {
   informationalHamiltonian: number;
   diracEigenvalue: number;
   infonDensity: number;
+  cognitiveLinkDensity?: number;
 }
 
 export interface QernelKPIs {
