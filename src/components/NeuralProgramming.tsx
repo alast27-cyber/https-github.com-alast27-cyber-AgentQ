@@ -38,7 +38,8 @@ import {
   GitBranch,
   RefreshCw,
   Link2,
-  Trash2
+  Trash2,
+  Waypoints
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IBQOS, CognitiveLinkType, CognitiveLink } from '../types';
@@ -107,12 +108,26 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialFeedback, setTutorialFeedback] = useState("");
   const [isSimulating, setIsSimulating] = useState(false);
+  const [linkFeedback, setLinkFeedback] = useState<string | null>(null);
 
   // Link Architect State
   const [nodeA, setNodeA] = useState<string>("");
   const [nodeB, setNodeB] = useState<string>("");
   const [linkType, setLinkType] = useState<CognitiveLinkType>('entanglement');
   const [strength, setStrength] = useState<number>(0.5);
+
+  const handleNodeSelect = (id: number) => {
+    if (!nodeA) {
+      setNodeA(id.toString());
+    } else if (!nodeB && nodeA !== id.toString()) {
+      setNodeB(id.toString());
+    } else {
+      // If both are set or clicking nodeA again, reset and set as nodeA
+      setNodeA(id.toString());
+      setNodeB("");
+    }
+    if (onNudge) onNudge(id);
+  };
 
   const protocols = [
     {
@@ -246,7 +261,53 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
     };
 
     onUpdateIBQOS(newIBQOS);
-    setTutorialFeedback(`Established ${linkType} link between Infon #${idA} and #${idB}.`);
+    if (onNudge) {
+      onNudge(idA);
+      onNudge(idB);
+    }
+    setLinkFeedback(`SUCCESS: ${linkType.toUpperCase()} link established between Infon #${idA} and #${idB}.`);
+    setTimeout(() => setLinkFeedback(null), 4000);
+    
+    if (isTutorialActive) {
+      setTutorialFeedback(`Established ${linkType} link between Infon #${idA} and #${idB}.`);
+    }
+    
+    setNodeA("");
+    setNodeB("");
+  };
+
+  const handleEntangleNodes = () => {
+    if (!ibqos || !onUpdateIBQOS) return;
+    const idA = parseInt(nodeA);
+    const idB = parseInt(nodeB);
+
+    if (isNaN(idA) || isNaN(idB) || idA < 0 || idA >= 240 || idB < 0 || idB >= 240) {
+      alert("Please enter valid Infon IDs (0-239).");
+      return;
+    }
+
+    if (idA === idB) {
+      alert("Cannot entangle a node with itself.");
+      return;
+    }
+
+    const newInfons = [...ibqos.infons];
+    newInfons[idA] = { ...newInfons[idA], isEntangled: true, entangledWith: idB };
+    newInfons[idB] = { ...newInfons[idB], isEntangled: true, entangledWith: idA };
+
+    const newIBQOS = {
+      ...ibqos,
+      infons: newInfons
+    };
+
+    onUpdateIBQOS(newIBQOS);
+    if (onNudge) {
+      onNudge(idA);
+      onNudge(idB);
+    }
+    setLinkFeedback(`SUCCESS: Infon #${idA} and #${idB} are now ENTANGLED.`);
+    setTimeout(() => setLinkFeedback(null), 4000);
+    
     setNodeA("");
     setNodeB("");
   };
@@ -254,7 +315,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
   const handleRemoveLink = (linkId: string) => {
     if (!ibqos || !onUpdateIBQOS) return;
     const link = ibqos.links.find(l => l.id === linkId);
-    if (link) {
+    if (link && onNudge) {
       onNudge(link.sourceId);
       onNudge(link.targetId);
     }
@@ -267,18 +328,29 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
 
   const handleClearLinks = () => {
     if (!ibqos || !onUpdateIBQOS) return;
-    if (window.confirm("Are you sure you want to clear all cognitive links?")) {
-      // Nudge all nodes that were part of links
+    if (window.confirm("Are you sure you want to clear all cognitive links and entanglements?")) {
+      // Nudge all nodes that were part of links or entanglements
       const affectedNodes = new Set<number>();
       ibqos.links.forEach(l => {
         affectedNodes.add(l.sourceId);
         affectedNodes.add(l.targetId);
       });
       
-      affectedNodes.forEach(id => onNudge(id));
+      ibqos.infons.forEach((infon, id) => {
+        if (infon.isEntangled) affectedNodes.add(id);
+      });
+      
+      affectedNodes.forEach(id => onNudge && onNudge(id));
+
+      const resetInfons = ibqos.infons.map(infon => ({
+        ...infon,
+        isEntangled: false,
+        entangledWith: undefined
+      }));
 
       onUpdateIBQOS({
         ...ibqos,
+        infons: resetInfons,
         links: []
       });
     }
@@ -339,6 +411,19 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
             <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Cognitive Link <span className="text-purple-400">Architect</span></h3>
             <p className="text-[9px] text-white/30 font-mono mt-1 uppercase tracking-widest">Manual Substrate Interconnect</p>
           </div>
+          <AnimatePresence>
+            {linkFeedback && (
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-4 py-2 bg-green-500/10 border border-green-500/40 rounded-xl flex items-center gap-2"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-[9px] font-mono text-green-400 font-bold uppercase tracking-tighter">{linkFeedback}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 bg-purple-500/5 border border-purple-500/20 rounded-lg flex flex-col items-end">
               <span className="text-[7px] font-black text-purple-400/60 uppercase tracking-widest">Link Density</span>
@@ -367,27 +452,45 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="space-y-2">
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node A ID</label>
-            <input 
-              type="number" 
-              min="0"
-              max="239"
-              value={nodeA}
-              onChange={(e) => setNodeA(e.target.value)}
-              placeholder="0-239"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
-            />
+            <div className="flex gap-2">
+              <input 
+                type="number" 
+                min="0"
+                max="239"
+                value={nodeA}
+                onChange={(e) => setNodeA(e.target.value)}
+                placeholder="0-239"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
+              />
+              <button 
+                onClick={() => nodeA && onNudge && onNudge(parseInt(nodeA))}
+                className="px-3 py-3 bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                title="Nudge Node A"
+              >
+                <Zap className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Node B ID</label>
-            <input 
-              type="number" 
-              min="0"
-              max="239"
-              value={nodeB}
-              onChange={(e) => setNodeB(e.target.value)}
-              placeholder="0-239"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
-            />
+            <div className="flex gap-2">
+              <input 
+                type="number" 
+                min="0"
+                max="239"
+                value={nodeB}
+                onChange={(e) => setNodeB(e.target.value)}
+                placeholder="0-239"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-purple-500 outline-none transition-all"
+              />
+              <button 
+                onClick={() => nodeB && onNudge && onNudge(parseInt(nodeB))}
+                className="px-3 py-3 bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                title="Nudge Node B"
+              >
+                <Zap className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block px-2">Link Type</label>
@@ -402,15 +505,32 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
             </select>
           </div>
           <div className="flex items-end gap-2 lg:col-span-2">
-            <button 
-              onClick={handleEstablishLink}
-              className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-3 h-3" /> Establish Link
-            </button>
+            <div className="flex flex-col flex-1 gap-2">
+              <button 
+                onClick={handleEstablishLink}
+                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-3 h-3" /> Establish Link
+              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleEntangleNodes}
+                  className="flex-1 py-3 bg-cyan-600/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                >
+                  <Waypoints className="w-3 h-3" /> Entangle Nodes
+                </button>
+                <button 
+                  onClick={() => { setNodeA(""); setNodeB(""); }}
+                  className="px-4 py-3 bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  title="Clear Selection"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
             <button 
               onClick={handleClearLinks}
-              className="px-4 py-3 bg-red-500/10 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+              className="px-4 py-3 h-full bg-red-500/10 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
               title="Clear All Links"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -469,30 +589,108 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
           </div>
         )}
 
-        {/* Neural Topology Overview */}
-        {ibqos && ibqos.links.length > 0 && (
-          <div className="p-6 bg-white/5 border border-white/5 rounded-[2rem] space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Neural Topology Overview</span>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                  <span className="text-[8px] font-mono text-white/40 uppercase">Entanglement</span>
+        {/* Cognitive Link Manifold - Enhanced Visualization */}
+        {ibqos && (
+          <div className="p-8 bg-black/40 border border-white/10 rounded-[2.5rem] space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 holographic-grid opacity-5 pointer-events-none" />
+            
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Cognitive Link <span className="text-cyan-400">Manifold</span></h3>
+                <p className="text-[9px] text-white/30 font-mono mt-1 uppercase tracking-widest">Real-time Substrate Interconnect Topology</p>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_#a855f7]" />
+                  <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Entanglement</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                  <span className="text-[8px] font-mono text-white/40 uppercase">Resonance</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#06b6d4]" />
+                  <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Resonance</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                  <span className="text-[8px] font-mono text-white/40 uppercase">Causal</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316]" />
+                  <span className="text-[8px] font-black text-orange-400 uppercase tracking-widest">Causal</span>
+                </div>
+                <div className="h-4 w-px bg-white/10 mx-2 hidden lg:block" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Active Links:</span>
+                  <span className="text-xs font-mono text-white font-bold">{ibqos.links.length}</span>
                 </div>
               </div>
             </div>
             
-            <div className="h-32 w-full bg-black/40 rounded-2xl border border-white/5 relative overflow-hidden flex items-center justify-center">
-              <div className="absolute inset-0 holographic-grid opacity-10" />
-              <svg className="w-full h-full p-4 overflow-visible">
+            <div className="h-64 w-full bg-black/60 rounded-3xl border border-white/5 relative overflow-hidden flex items-center justify-center group">
+              <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
+              <svg className="w-full h-full p-8 overflow-visible">
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* Background Grid of all nodes */}
+                {Array.from({ length: 240 }).map((_, id) => {
+                  const x = (id % 20) * (100 / 20) + 2.5;
+                  const y = Math.floor(id / 20) * (100 / 12) + 4;
+                  const isInvolved = ibqos.links.some(l => l.sourceId === id || l.targetId === id);
+                  const isEntangled = ibqos.infons[id]?.isEntangled;
+                  
+                  return (
+                    <g key={`bg-node-group-${id}`}>
+                      {isEntangled && (
+                        <circle 
+                          cx={`${x}%`} cy={`${y}%`} r="3"
+                          fill="none"
+                          stroke="#a855f7"
+                          strokeWidth="0.5"
+                          strokeDasharray="1 1"
+                          className="animate-spin-slow"
+                        />
+                      )}
+                      <circle 
+                        key={`bg-node-${id}`}
+                        cx={`${x}%`} cy={`${y}%`} r={isInvolved || isEntangled ? "2" : "0.8"}
+                        fill={id.toString() === nodeA ? "#a855f7" : id.toString() === nodeB ? "#06b6d4" : isEntangled ? "#a855f7" : isInvolved ? "white" : "rgba(255,255,255,0.05)"}
+                        className={`cursor-pointer transition-all duration-300 ${isInvolved || isEntangled || id.toString() === nodeA || id.toString() === nodeB ? 'opacity-100' : 'hover:fill-cyan-400 hover:opacity-100 opacity-20'}`}
+                        onClick={() => handleNodeSelect(id)}
+                      >
+                        <title>Infon #{id} {isEntangled ? '(Entangled)' : ''}</title>
+                      </circle>
+                    </g>
+                  );
+                })}
+
+                {/* Legacy Entanglement Links */}
+                {ibqos.infons.map((infon, id) => {
+                  if (infon.isEntangled && infon.entangledWith !== undefined && id < infon.entangledWith) {
+                    const x1 = (id % 20) * (100 / 20) + 2.5;
+                    const y1 = Math.floor(id / 20) * (100 / 12) + 4;
+                    const x2 = (infon.entangledWith % 20) * (100 / 20) + 2.5;
+                    const y2 = Math.floor(infon.entangledWith / 20) * (100 / 12) + 4;
+                    
+                    return (
+                      <motion.line 
+                        key={`entangled-link-${id}-${infon.entangledWith}`}
+                        x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                        stroke="#a855f7"
+                        strokeWidth="1"
+                        strokeDasharray="2 2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.3 }}
+                        transition={{ duration: 1 }}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+                
+                {/* Cognitive Links with enhanced visualization */}
                 {ibqos.links.map((link, idx) => {
                   const x1 = (link.sourceId % 20) * (100 / 20) + 2.5;
                   const y1 = Math.floor(link.sourceId / 20) * (100 / 12) + 4;
@@ -504,37 +702,74 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                   if (link.type === 'causal') color = "#f97316"; // orange
                   
                   return (
-                    <motion.line 
-                      key={link.id}
-                      x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
-                      stroke={color}
-                      strokeWidth={1 + link.strength * 2}
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: 0.4 }}
-                      transition={{ duration: 1, delay: idx * 0.05 }}
-                    />
-                  );
-                })}
-                {/* Nodes involved in links */}
-                {Array.from(new Set(ibqos.links.flatMap(l => [l.sourceId, l.targetId]))).map(id => {
-                  const x = (id % 20) * (100 / 20) + 2.5;
-                  const y = Math.floor(id / 20) * (100 / 12) + 4;
-                  return (
-                    <circle 
-                      key={`node-${id}`}
-                      cx={`${x}%`} cy={`${y}%`} r="1.5"
-                      fill="white"
-                      className="opacity-40"
-                    />
+                    <g key={link.id}>
+                      {/* Outer Glow Line */}
+                      <motion.line 
+                        x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                        stroke={color}
+                        strokeWidth={4 + link.strength * 12}
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.1 }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        style={{ filter: 'blur(4px)' }}
+                      />
+                      {/* Core Link Line */}
+                      <motion.line 
+                        x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                        stroke={color}
+                        strokeWidth={1.5 + link.strength * 6}
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.6 + link.strength * 0.4 }}
+                        transition={{ duration: 1, ease: "easeInOut", delay: idx * 0.02 }}
+                        filter="url(#glow)"
+                      />
+                      {/* Pulse Animation */}
+                      <motion.circle
+                        r="3"
+                        fill="white"
+                        initial={{ offsetDistance: "0%" }}
+                        animate={{ offsetDistance: "100%" }}
+                        transition={{ 
+                          duration: 3 / (link.strength + 0.5), 
+                          repeat: Infinity, 
+                          ease: "linear",
+                          delay: Math.random() * 2
+                        }}
+                        style={{ 
+                          offsetPath: `path('M ${x1},${y1} L ${x2},${y2}')`,
+                          visibility: link.strength > 0.3 ? 'visible' : 'hidden',
+                          opacity: 0.8
+                        }}
+                      />
+                    </g>
                   );
                 })}
               </svg>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Topology Entropy</span>
+                <div className="text-lg font-mono text-white font-bold">{(1 - (ibqos.links.length / 240)).toFixed(4)} <span className="text-[10px] text-white/40">S</span></div>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Interconnect Density</span>
+                <div className="text-lg font-mono text-cyan-400 font-bold">{(ibqos.links.length / 2.4).toFixed(1)}% <span className="text-[10px] text-white/40">ρ</span></div>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col gap-1">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Network Coherence</span>
+                <div className="text-lg font-mono text-purple-400 font-bold">{(ibqos.globalCoherence * 100).toFixed(2)}% <span className="text-[10px] text-white/40">Φ</span></div>
+              </div>
             </div>
           </div>
         )}
 
         {ibqos && ibqos.links.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          <div className="mt-8 border-t border-white/5 pt-8">
+            <h4 className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-4 px-2">Active Link Registry</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {ibqos.links.map((link) => (
               <div key={link.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
                 <div className="flex items-center gap-3">
@@ -570,8 +805,9 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-12">
         {protocols.map((p, i) => {
