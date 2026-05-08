@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ErrorBoundary from './ErrorBoundary';
 import { 
   Cpu, 
   Activity, 
@@ -641,9 +642,11 @@ const QCOSCore: React.FC<QCOSCoreProps> = ({ state, externalTask }) => {
                 {isSaving && <div className="flex items-center gap-2"><Loader2 className="w-3 h-3 text-cyan-400 animate-spin" /><span className="text-[8px] font-mono text-cyan-400 uppercase">Synchronizing Ledger...</span></div>}
              </div>
              <div className="flex-1 p-4 font-mono text-[10px] space-y-1 overflow-y-auto custom-scrollbar">
-                {logs.length > 0 ? logs.map((log, i) => (<div key={i} className="flex gap-4"><span className="text-white/20 shrink-0">{i}</span><span className="text-white/60">{log}</span></div>)) : (
-                  <div className="text-white/10 uppercase font-bold text-center py-8">No events logged in current session.</div>
-                )}
+                <ErrorBoundary>
+                  {logs.length > 0 ? logs.map((log, i) => (<div key={i} className="flex gap-4"><span className="text-white/20 shrink-0">{i}</span><span className="text-white/60">{log}</span></div>)) : (
+                    <div className="text-white/10 uppercase font-bold text-center py-8">No events logged in current session.</div>
+                  )}
+                </ErrorBoundary>
              </div>
           </div>
         </div>

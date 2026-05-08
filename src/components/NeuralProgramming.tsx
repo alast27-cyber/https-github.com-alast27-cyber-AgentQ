@@ -115,6 +115,25 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
   const [nodeB, setNodeB] = useState<string>("");
   const [linkType, setLinkType] = useState<CognitiveLinkType>('entanglement');
   const [strength, setStrength] = useState<number>(0.5);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+
+  const [code, setCode] = useState("// Write your neural protocol here...\n\nfunction executeNeuralProtocol() {\n  // Define your protocol logic here\n  console.log('Protocol executed');\n}");
+
+  const filteredLinks = useMemo(() => {
+    if (!ibqos) return [];
+    const query = searchQuery.toLowerCase();
+    return ibqos.links.filter(link => 
+      link.sourceId.toString().includes(query) || 
+      link.targetId.toString().includes(query) || 
+      link.type.toLowerCase().includes(query)
+    );
+  }, [ibqos, searchQuery]);
+
+  const handleExecuteCode = () => {
+    console.log("Executing code:", code);
+    alert("Executing neural protocol...");
+  };
 
   const handleNodeSelect = (id: number) => {
     if (!nodeA) {
@@ -237,30 +256,45 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
       return;
     }
 
-    const existingLink = ibqos.links?.find(l => 
-      (l.sourceId === idA && l.targetId === idB) || 
-      (l.sourceId === idB && l.targetId === idA)
-    );
+    if (editingLinkId) {
+      const newIBQOS = {
+        ...ibqos,
+        links: ibqos.links.map(l => l.id === editingLinkId ? { ...l, type: linkType, strength: strength } : l)
+      };
+      onUpdateIBQOS(newIBQOS);
+      setEditingLinkId(null);
+      setNodeA("");
+      setNodeB("");
+      setLinkFeedback("Link updated.");
+    } else {
+      const existingLink = ibqos.links?.find(l => 
+        (l.sourceId === idA && l.targetId === idB) || 
+        (l.sourceId === idB && l.targetId === idA)
+      );
 
-    if (existingLink) {
-      setTutorialFeedback("Link already exists between these nodes.");
-      return;
+      if (existingLink) {
+        setTutorialFeedback("Link already exists between these nodes.");
+        return;
+      }
+
+      const newLink: CognitiveLink = {
+        id: `link-${Date.now()}`,
+        sourceId: idA,
+        targetId: idB,
+        type: linkType,
+        strength: strength
+      };
+
+      const newIBQOS = {
+        ...ibqos,
+        links: [...ibqos.links, newLink]
+      };
+      onUpdateIBQOS(newIBQOS);
+      setNodeA("");
+      setNodeB("");
+      setLinkFeedback("Link established.");
     }
 
-    const newLink: CognitiveLink = {
-      id: `link-${Date.now()}`,
-      sourceId: idA,
-      targetId: idB,
-      type: linkType,
-      strength: strength
-    };
-
-    const newIBQOS = {
-      ...ibqos,
-      links: [...ibqos.links, newLink]
-    };
-
-    onUpdateIBQOS(newIBQOS);
     if (onNudge) {
       onNudge(idA);
       onNudge(idB);
@@ -510,12 +544,27 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
           </div>
           <div className="flex items-end gap-2 lg:col-span-2">
             <div className="flex flex-col flex-1 gap-2">
-              <button 
-                onClick={handleEstablishLink}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
-              >
-                <Plus className="w-3 h-3" /> Establish Link
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleEstablishLink}
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-3 h-3" /> {editingLinkId ? "Update Link" : "Establish Link"}
+                </button>
+                {editingLinkId && (
+                  <button 
+                    onClick={() => {
+                      setEditingLinkId(null);
+                      setNodeA("");
+                      setNodeB("");
+                    }}
+                    className="px-4 py-3 bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                    title="Cancel Edit"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button 
                   onClick={handleEntangleNodes}
@@ -524,7 +573,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                   <Waypoints className="w-3 h-3" /> Entangle Nodes
                 </button>
                 <button 
-                  onClick={() => { setNodeA(""); setNodeB(""); }}
+                  onClick={() => { setNodeA(""); setNodeB(""); setEditingLinkId(null); }}
                   className="px-4 py-3 bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                   title="Clear Selection"
                 >
@@ -729,7 +778,20 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                   if (link.type === 'causal') color = "#f97316"; // orange
                   
                   return (
-                    <g key={link.id}>
+                    <g key={link.id} className="cursor-pointer group">
+                      <title>{`Type: ${link.type.toUpperCase()} | Strength: ${(link.strength * 100).toFixed(0)}%`}</title>
+                      {/* Selection Indicator */}
+                      {link.id === editingLinkId && (
+                        <motion.line 
+                          x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
+                          stroke="white"
+                          strokeWidth={8 + link.strength * 12}
+                          strokeLinecap="round"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 0.3 }}
+                          transition={{ repeat: Infinity, duration: 1, repeatType: "reverse" }}
+                        />
+                      )}
                       {/* Outer Glow Line */}
                       <motion.line 
                         x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`}
@@ -740,6 +802,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                         animate={{ pathLength: 1, opacity: 0.1 }}
                         transition={{ duration: 1.5, ease: "easeOut" }}
                         style={{ filter: 'blur(4px)' }}
+                        className="group-hover:opacity-30 transition-opacity"
                       />
                       {/* Core Link Line */}
                       <motion.line 
@@ -751,6 +814,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                         animate={{ pathLength: 1, opacity: 0.6 + link.strength * 0.4 }}
                         transition={{ duration: 1, ease: "easeInOut", delay: idx * 0.02 }}
                         filter="url(#glow)"
+                        className="group-hover:stroke-white transition-colors"
                       />
                       {/* Pulse Animation */}
                       <motion.circle
@@ -795,9 +859,18 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
 
         {ibqos && ibqos.links.length > 0 && (
           <div className="mt-8 border-t border-white/5 pt-8">
-            <h4 className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-4 px-2">Active Link Registry</h4>
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-widest">Active Link Registry</h4>
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter links (Node ID or Type)..."
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-mono text-white focus:border-purple-500 outline-none transition-all w-64"
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ibqos.links.map((link) => (
+            {filteredLinks.map((link) => (
               <div key={link.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-400`}>
@@ -809,6 +882,18 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      setNodeA(link.sourceId.toString());
+                      setNodeB(link.targetId.toString());
+                      setLinkType(link.type);
+                      setStrength(link.strength);
+                    }}
+                    className="p-2 text-white/20 hover:text-purple-400 transition-colors"
+                    title="Edit Link"
+                  >
+                    <Settings2 className="w-3 h-3" />
+                  </button>
                   <button 
                     onClick={() => {
                       if (onNudge) {
@@ -903,6 +988,23 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
             </div>
           );
         })}
+      </div>
+      {/* Neural Protocol Editor */}
+      <div className="bg-black/40 border border-white/10 rounded-[2.5rem] p-8 flex flex-col gap-6 mt-8">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-black text-white uppercase italic tracking-tighter">Neural Protocol Editor</h4>
+          <button 
+            onClick={handleExecuteCode}
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+          >
+            <Command className="w-3 h-3" /> Execute Protocol
+          </button>
+        </div>
+        <textarea 
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          className="w-full h-64 bg-black border border-white/10 rounded-xl p-4 text-xs font-mono text-purple-400 focus:border-purple-500 outline-none transition-all resize-none"
+        />
       </div>
     </motion.div>
   );
@@ -1044,7 +1146,7 @@ const NeuralExercises = () => {
 };
 
 const AppDevelopment = () => {
-  const apps = [
+  const [apps, setApps] = useState([
     {
       title: "Cognitive Remote",
       subtitle: "Device Control Interface",
@@ -1077,7 +1179,24 @@ const AppDevelopment = () => {
       icon: Gamepad2,
       color: "text-orange-400"
     }
-  ];
+  ]);
+
+  const handleCreateApp = () => {
+    const newApp = {
+      title: `New App ${apps.length + 1}`,
+      subtitle: "Custom Neural App",
+      description: "A new application created in the Neural Forge.",
+      status: "DEVELOPMENT",
+      icon: Plus,
+      color: "text-white"
+    };
+    setApps([...apps, newApp]);
+  };
+
+  const handleLaunchApp = (appTitle: string) => {
+    console.log(`Launching ${appTitle}...`);
+    alert(`Launching ${appTitle}...`);
+  };
 
   return (
     <motion.div 
@@ -1091,7 +1210,10 @@ const AppDevelopment = () => {
           <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">Application <span className="text-purple-400">Forge</span></h3>
           <p className="text-xs text-white/30 font-mono mt-1 uppercase tracking-widest">Neural SDK v4.2.0: READY</p>
         </div>
-        <button className="px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center gap-3">
+        <button 
+          onClick={handleCreateApp}
+          className="px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-purple-900/40 flex items-center gap-3"
+        >
           <Plus className="w-4 h-4" /> Create New App
         </button>
       </div>
@@ -1110,7 +1232,12 @@ const AppDevelopment = () => {
               <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest mt-1">{app.subtitle}</p>
             </div>
             <p className="text-xs text-white/40 leading-relaxed italic">{app.description}</p>
-            <button className="mt-auto w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:bg-purple-500/20 hover:text-purple-400 hover:border-purple-500/40 transition-all">Launch Instance</button>
+            <button 
+              onClick={() => handleLaunchApp(app.title)}
+              className="mt-auto w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:bg-purple-500/20 hover:text-purple-400 hover:border-purple-500/40 transition-all"
+            >
+              Launch Instance
+            </button>
           </div>
         ))}
       </div>

@@ -1,8 +1,9 @@
 {
-  "name": "QCOS AgenQ Interface",
+  "name": "QCOS AgenQ Interface 2",
   "description": "A high-fidelity interface for the Quantum Computing Operating System, featuring the AgenQ AI-Native persona and IAI-IPS quantum neuro-network visualization.",
   "requestFramePermissions": [
     "camera",
     "microphone"
-  ]
+  ],
+  "majorCapabilities": []
 }

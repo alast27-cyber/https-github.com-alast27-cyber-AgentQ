@@ -121,8 +121,14 @@ const AgentQChat: React.FC<AgentQChatProps> = ({
           <div>
             <h3 className="text-lg font-black text-white uppercase italic tracking-tighter">Agent <span className="text-purple-400">Q</span></h3>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">Substrate Active</span>
+              <select 
+                value={activeCore}
+                onChange={(e) => onModelChange?.(e.target.value as AICoreModel)}
+                className="bg-transparent text-[9px] font-black text-green-500 uppercase tracking-widest focus:outline-none cursor-pointer"
+              >
+                <option value="AgenQ-Prime">AgenQ-Prime</option>
+                <option value="Gemma-Open-Bridge">Gemma-Open-Bridge</option>
+              </select>
             </div>
           </div>
         </div>

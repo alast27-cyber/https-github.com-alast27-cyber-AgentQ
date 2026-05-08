@@ -82,6 +82,7 @@ import QCOSCore from './components/QCOSCore';
 import AgentQIcon from './components/AgentQIcon';
 import IBQOSSimulator from './components/IBQOSSimulator';
 import QCOSStudio from './components/QCOSStudio';
+import ErrorBoundary from './components/ErrorBoundary';
 import QuantumCognitionEngines from './components/QuantumCognitionEngines';
 import CHIPSBrowser from './components/CHIPSBrowser';
 import ChipsDevPlatform from './components/ChipsDevPlatform';
@@ -460,14 +461,16 @@ const App: React.FC = () => {
                         </button>
                      </div>
                      <div className="h-[400px]">
-                        <IBQOSSimulator 
-                          ibqos={state.ibqos} 
-                          onNudge={handleNudgeInfon} 
-                          onCalibrate={handleCalibrateIBQOS} 
-                          onUpdateInfons={handleUpdateInfons} 
-                          onUpdateDensity={handleUpdateDensity} 
-                          onUpdateIBQOS={handleUpdateIBQOS}
-                        />
+                        <ErrorBoundary>
+                          <IBQOSSimulator 
+                            ibqos={state.ibqos} 
+                            onNudge={handleNudgeInfon} 
+                            onCalibrate={handleCalibrateIBQOS} 
+                            onUpdateInfons={handleUpdateInfons} 
+                            onUpdateDensity={handleUpdateDensity} 
+                            onUpdateIBQOS={handleUpdateIBQOS}
+                          />
+                        </ErrorBoundary>
                      </div>
                   </div>
               </div>
@@ -493,14 +496,16 @@ const App: React.FC = () => {
           {currentPage === 'cognition' && <QuantumCognitionEngines onAgenticCommand={handleAgenticCommand} />}
           {currentPage === 'gus' && <GrandUniverseSimulator metrics={state.gus} liveDataStream={state.training.liveDataStream} onActivateMirroring={() => {}} autoTask={state.activeSimulationTask} onTaskComplete={(s) => {}} />}
           {currentPage === 'qpu' && (
-            <IBQOSSimulator 
-              ibqos={state.ibqos} 
-              onNudge={handleNudgeInfon} 
-              onCalibrate={handleCalibrateIBQOS} 
-              onUpdateInfons={handleUpdateInfons} 
-              onUpdateDensity={handleUpdateDensity} 
-              onUpdateIBQOS={handleUpdateIBQOS}
-            />
+            <ErrorBoundary>
+              <IBQOSSimulator 
+                ibqos={state.ibqos} 
+                onNudge={handleNudgeInfon} 
+                onCalibrate={handleCalibrateIBQOS} 
+                onUpdateInfons={handleUpdateInfons} 
+                onUpdateDensity={handleUpdateDensity} 
+                onUpdateIBQOS={handleUpdateIBQOS}
+              />
+            </ErrorBoundary>
           )}
           {currentPage === 'studio' && <QCOSStudio activeCore={state.activeCore} />}
           {currentPage === 'chips' && <CHIPSProtocol />}

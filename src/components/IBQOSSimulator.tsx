@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useCallback, memo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, memo, useRef } from 'react';
 import { 
   Cpu, 
   Zap, 
@@ -20,7 +20,15 @@ import {
   Trash2,
   Link2
 } from 'lucide-react';
-import { IBQOS, InfonState, CognitiveLink } from '../types';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip 
+} from 'recharts';
+import { IBQOS, InfonState, CognitiveLink, CognitiveLinkType } from '../types';
 
 interface IBQOSSimulatorProps {
   ibqos: IBQOS;
@@ -43,6 +51,7 @@ const InfonNode = memo(({
   ibqos,
   isHovered, 
   isSelected,
+  selectionCount,
   onHover, 
   onNudge 
 }: { 
@@ -50,6 +59,7 @@ const InfonNode = memo(({
   ibqos: IBQOS;
   isHovered: boolean; 
   isSelected: boolean;
+  selectionCount: number;
   onHover: (id: number | null) => void; 
   onNudge: (id: number) => void;
 }) => {
@@ -92,7 +102,7 @@ const InfonNode = memo(({
           }}
         />
         {isSelected && (
-          <div className="absolute inset-0 border-2 border-white animate-pulse rounded-sm z-30 shadow-[0_0_10px_white]" />
+          <div className={`absolute inset-0 border-2 ${selectionCount === 2 ? 'border-purple-500 shadow-[0_0_15px_#a855f7]' : 'border-white shadow-[0_0_10px_white]'} animate-pulse rounded-sm z-30`} />
         )}
         {infon.isEntangled && (
           <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-purple-500 rounded-full z-40 shadow-[0_0_5px_#a855f7]" />
@@ -208,6 +218,32 @@ const InfonNode = memo(({
   );
 });
 
+const InfonTelemetryPanel = ({ infon, history }: { infon: InfonState, history: any[] }) => {
+  return (
+    <div className="bg-black/90 border border-cyan-500/30 p-4 rounded-xl w-64 shadow-2xl backdrop-blur-xl">
+      <h3 className="text-[10px] font-black uppercase text-white mb-2">Infon #{infon.id} Telemetry</h3>
+      <div className="h-32">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={history}>
+            <Line type="monotone" dataKey="probability" stroke="#22d3ee" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="coherence" stroke="#4ade80" dot={false} strokeWidth={2} />
+            <XAxis dataKey="time" hide />
+            <YAxis hide domain={[0, 1]} />
+            <RechartsTooltip 
+              contentStyle={{ backgroundColor: '#000', border: '1px solid #06b6d4', fontSize: '10px' }}
+              itemStyle={{ fontSize: '10px' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-2 text-[9px] font-mono">
+        <div className="text-cyan-400">Prob: {infon.probability.toFixed(3)}</div>
+        <div className="text-green-400">Coh: {(infon.coherence * 100).toFixed(1)}%</div>
+      </div>
+    </div>
+  );
+};
+
 const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({ 
   ibqos, 
   onNudge, 
@@ -217,10 +253,51 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
   onUpdateIBQOS 
 }) => {
   const [hoveredInfon, setHoveredInfon] = useState<number | null>(null);
+  const [infonHistory, setInfonHistory] = useState<any[]>([]);
   const [selectedInfons, setSelectedInfons] = useState<number[]>([]);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [newLinkType, setNewLinkType] = useState<CognitiveLinkType>('entanglement');
+  const [newLinkStrength, setNewLinkStrength] = useState(0.5);
   const [isBooted, setIsBooted] = useState(false);
   const [isBooting, setIsBooting] = useState(false);
   const [bootProgress, setBootProgress] = useState(0);
+
+  // When hoveredInfon changes, reset history
+  useEffect(() => {
+    setInfonHistory([]);
+  }, [hoveredInfon]);
+
+  // When ibqos.infons changes, if hoveredInfon is set, add to history
+  useEffect(() => {
+    if (hoveredInfon !== null) {
+      const infon = ibqos.infons[hoveredInfon];
+      if (infon) {
+        setInfonHistory(prev => [...prev.slice(-20), {
+          time: new Date().toLocaleTimeString(),
+          probability: infon.probability,
+          coherence: infon.coherence
+        }]);
+      }
+    }
+  }, [ibqos.infons, hoveredInfon]);
+
+  const handleCreateLink = () => {
+    if (selectedInfons.length !== 2 || !ibqos || !onUpdateIBQOS) return;
+    const [sourceId, targetId] = selectedInfons;
+    const newLink: CognitiveLink = {
+      id: `link-${Date.now()}`,
+      sourceId,
+      targetId,
+      type: newLinkType,
+      strength: newLinkStrength
+    };
+    onUpdateIBQOS({
+      ...ibqos,
+      links: [...(ibqos.links || []), newLink]
+    });
+    setSelectedInfons([]);
+    setIsLinkModalOpen(false);
+  };
 
   const handleNodeClick = (id: number) => {
     const newInfons = [...ibqos.infons];
@@ -272,15 +349,16 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
     }
 
     // 3. Handle selection
+    console.log('Nudged Infon', id);
     if (selectedInfons.includes(id)) {
       setSelectedInfons(selectedInfons.filter(i => i !== id));
-      applyNudge(id);
-      onUpdateInfons(newInfons);
     } else if (selectedInfons.length < 2) {
       setSelectedInfons([...selectedInfons, id]);
-      applyNudge(id);
-      onUpdateInfons(newInfons);
+    } else {
+      setSelectedInfons([id]);
     }
+    applyNudge(id);
+    onUpdateInfons(newInfons);
   };
 
   const handleEntangleSelectedNodes = () => {
@@ -395,6 +473,43 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
 
   return (
     <div className="flex flex-col h-full gap-6 animate-in fade-in duration-700">
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0a0a0a] border border-cyan-500/30 p-6 rounded-2xl w-80 shadow-2xl">
+            <h3 className="text-sm font-black uppercase text-white mb-4">Configure Link</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-white/40 uppercase">Link Type</label>
+                <select 
+                  value={newLinkType} 
+                  onChange={(e) => setNewLinkType(e.target.value as CognitiveLinkType)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white"
+                >
+                  <option value="entanglement">Entanglement</option>
+                  <option value="resonance">Resonance</option>
+                  <option value="causal">Causal</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-white/40 uppercase">Strength: {newLinkStrength.toFixed(2)}</label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.01" 
+                  value={newLinkStrength}
+                  onChange={(e) => setNewLinkStrength(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+              </div>
+              <div className="flex gap-2 mt-6">
+                <button onClick={() => setIsLinkModalOpen(false)} className="flex-1 py-2 text-xs font-bold uppercase text-white/40 hover:text-white">Cancel</button>
+                <button onClick={handleCreateLink} className="flex-1 py-2 bg-cyan-600 text-white rounded-lg text-xs font-bold uppercase">Create</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Simulation Telemetry Bar */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <MetricTile 
@@ -488,6 +603,12 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
             </div>
           </div>
           
+          {hoveredInfon !== null && (
+            <div className="absolute top-20 right-6 z-50">
+              <InfonTelemetryPanel infon={ibqos.infons[hoveredInfon]} history={infonHistory} />
+            </div>
+          )}
+          
           {isBooted && (
             <div className="flex items-center gap-3">
               <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-500/40">Inject Pattern:</span>
@@ -497,12 +618,20 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
                 <PatternBtn onClick={() => injectPattern('RANDOM')} label="Noise" icon={<Zap className="w-3 h-3" />} />
                 <div className="w-px h-4 bg-white/10 mx-1 self-center" />
                 {selectedInfons.length === 2 && (
-                  <button 
-                    onClick={handleEntangleSelectedNodes}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-500/50 text-[9px] font-bold uppercase tracking-tighter text-purple-400 transition-all active:scale-95"
-                  >
-                    <Share2 className="w-3 h-3" /> Entangle Nodes
-                  </button>
+                  <>
+                    <button 
+                      onClick={handleEntangleSelectedNodes}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-500/50 text-[9px] font-bold uppercase tracking-tighter text-purple-400 transition-all active:scale-95"
+                    >
+                      <Share2 className="w-3 h-3" /> Entangle Nodes
+                    </button>
+                    <button 
+                      onClick={() => setIsLinkModalOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50 text-[9px] font-bold uppercase tracking-tighter text-cyan-400 transition-all active:scale-95"
+                    >
+                      <Link2 className="w-3 h-3" /> Create Link
+                    </button>
+                  </>
                 )}
                 <button 
                   onClick={() => {
@@ -623,6 +752,7 @@ const IBQOSSimulator: React.FC<IBQOSSimulatorProps> = ({
                 ibqos={ibqos}
                 isHovered={hoveredInfon === q.id} 
                 isSelected={selectedInfons.includes(q.id)}
+                selectionCount={selectedInfons.length}
                 onHover={handleHoverChange} 
                 onNudge={handleNodeClick} 
               />
@@ -757,6 +887,7 @@ const ArchitectureCard: React.FC<{ label: string, value: string, subValue: strin
     </div>
   );
 };
+
 
 const PatternBtn: React.FC<{ onClick: () => void, label: string, icon: React.ReactNode }> = ({ onClick, label, icon }) => (
   <button onClick={onClick} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-500/40 text-[9px] font-bold uppercase tracking-tighter text-white/60 hover:text-cyan-400 transition-all active:scale-95">
