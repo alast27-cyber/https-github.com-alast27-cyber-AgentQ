@@ -240,6 +240,12 @@ const QuantumEvolution: React.FC<QuantumEvolutionProps> = ({ systemState, onUpda
         <EvolutionKPI label="Lattice Stability" value={localState.metrics.stability} color="text-green-400" icon={<ShieldCheck />} desc="Architectural Parity Lock" />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 shrink-0">
+        <EvolutionKPI label="Mutation Success Rate" value={0.92} color="text-blue-400" icon={<CheckCircle2 />} desc="Successful mutation deployment ratio" />
+        <EvolutionKPI label="Ethical Alignment Score" value={0.98} color="text-emerald-400" icon={<ShieldCheck />} desc="System-wide ethical consensus score" />
+        <EvolutionKPI label="Causal Drift" value={0.05} color="text-orange-400" icon={<Waves />} desc="Systemic causal trajectory deviation" />
+      </div>
+
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
         
         {/* Left: RMP Pipeline Tracking */}

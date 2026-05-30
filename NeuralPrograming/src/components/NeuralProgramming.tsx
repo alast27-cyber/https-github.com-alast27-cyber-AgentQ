@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import AgentQChat from './AgentQChat';
 import { 
@@ -43,7 +42,7 @@ import {
   Waypoints
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { IBQOS, CognitiveLinkType, CognitiveLink } from '../types';
+import { IBQOS, CognitiveLinkType, CognitiveLink, InfonState } from '../types';
 
 interface NeuralProgrammingProps {
   ibqos?: IBQOS;
@@ -51,8 +50,62 @@ interface NeuralProgrammingProps {
   onNudge?: (id: number) => void;
 }
 
-const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIBQOS, onNudge }) => {
+const generateInitialInfons = (): InfonState[] => {
+  return Array.from({ length: 240 }, (_, i) => ({
+    id: i,
+    probability: Math.random() * 0.05,
+    phase: Math.random() * Math.PI * 2,
+    coherence: 0.95 + Math.random() * 0.05,
+    isEntangled: false,
+    lastPulse: Date.now(),
+    entropy: Math.random() * 0.5,
+    valence: Math.floor(Math.random() * 4) + 1,
+    loops: Math.floor(Math.random() * 3),
+    hopping: Math.random() * 0.2,
+    quantizedState: 'ground',
+    lastMeasurement: Date.now()
+  }));
+};
+
+const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ 
+  ibqos: propIbqos, 
+  onUpdateIBQOS: propOnUpdateIBQOS, 
+  onNudge: propOnNudge 
+}) => {
   const [activeTab, setActiveTab] = useState<'BRIDGING' | 'EXERCISES' | 'APPS'>('BRIDGING');
+
+  // Graceful standalone fallback to local state if missing props
+  const [localIbqos, setLocalIbqos] = useState<IBQOS>(() => {
+    return {
+      infons: generateInitialInfons(),
+      links: [],
+      globalCoherence: 0.998,
+      temperature: 15.2,
+      noiseFloor: 0.0012,
+      informationalHamiltonian: 1.0,
+      diracEigenvalue: 0.5,
+      infonDensity: 0.85,
+      cognitiveLinkDensity: 0.5
+    };
+  });
+
+  const ibqos = propIbqos || localIbqos;
+
+  const onUpdateIBQOS = propOnUpdateIBQOS || ((updated: IBQOS) => {
+    setLocalIbqos(updated);
+  });
+
+  const onNudge = propOnNudge || ((id: number) => {
+    setLocalIbqos(prev => {
+      const newInfons = [...prev.infons];
+      const q = { ...newInfons[id] };
+      q.probability = Math.min(1, q.probability + 0.2);
+      q.phase = (q.phase + Math.PI / 4) % (Math.PI * 2);
+      q.lastPulse = Date.now();
+      newInfons[id] = q;
+      return { ...prev, infons: newInfons };
+    });
+  });
 
   return (
     <div className="flex flex-col h-full glass-panel rounded-[2.5rem] border border-purple-500/30 overflow-hidden bg-black/60 backdrop-blur-3xl shadow-[0_0_100px_-30px_rgba(168,85,247,0.3)] animate-in zoom-in-95 duration-700">
@@ -68,7 +121,7 @@ const NeuralProgramming: React.FC<NeuralProgrammingProps> = ({ ibqos, onUpdateIB
               Neural <span className="text-purple-400">Programming</span>
             </h2>
             <div className="flex items-center gap-4 mt-1">
-              <span className="text-[10px] text-purple-400/60 font-mono tracking-[0.3em] uppercase font-bold">Cognitive Substrate Interface: SYNCHRONIZED</span>
+              <span className="text-[10px] text-purple-400/60 font-mono tracking-[0.3em] uppercase font-bold">Cognitive Substrate Interface: STANDALONE SYNCHRONIZED</span>
             </div>
           </div>
         </div>
@@ -122,8 +175,6 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
   const [code, setCode] = useState("// Write your neural protocol here...\n\nfunction executeNeuralProtocol() {\n  // Define your protocol logic here\n  console.log('Protocol executed');\n}");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // ... (existing functions)
-
   const handleAgentQProtocolGeneration = async () => {
     setIsGenerating(true);
     setLinkFeedback("AgentQ integrating protocol...");
@@ -137,8 +188,6 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
     setIsGenerating(false);
     setLinkFeedback("AgentQ protocol generated successfully.");
   };
-
-  // ... (inside the JSX, add the button in the Code Editor section)
 
   const filteredLinks = useMemo(() => {
     if (!ibqos) return [];
@@ -161,7 +210,6 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
     } else if (!nodeB && nodeA !== id.toString()) {
       setNodeB(id.toString());
     } else {
-      // If both are set or clicking nodeA again, reset and set as nodeA
       setNodeA(id.toString());
       setNodeB("");
     }
@@ -383,7 +431,6 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
   const handleClearLinks = () => {
     if (!ibqos || !onUpdateIBQOS) return;
     if (window.confirm("Are you sure you want to clear all cognitive links and entanglements?")) {
-      // Nudge all nodes that were part of links or entanglements
       const affectedNodes = new Set<number>();
       ibqos.links.forEach(l => {
         affectedNodes.add(l.sourceId);
@@ -716,7 +763,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
               </div>
             </div>
             
-            <div className="h-64 w-full bg-black/60 rounded-3xl border border-white/5 relative overflow-hidden flex items-center justify-center group">
+            <div className="h-64 w-full bg-black/60 rounded-3xl border border-white/5 relative overflow-hidden flex items-center justify-center group font-mono">
               <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
               <svg className="w-full h-full p-8 overflow-visible">
                 <defs>
@@ -740,7 +787,7 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                     <g key={`bg-node-group-${id}`}>
                       {isEntangled && (
                         <circle 
-                          cx={`${x}%`} cy={`${y}%`} r="4"
+                           cx={`${x}%`} cy={`${y}%`} r="4"
                           fill="none"
                           stroke="#a855f7"
                           strokeWidth="1"
@@ -835,24 +882,6 @@ const BridgingProtocols = ({ ibqos, onUpdateIBQOS, onNudge }: { ibqos?: IBQOS; o
                         transition={{ duration: 1, ease: "easeInOut", delay: idx * 0.02 }}
                         filter="url(#glow)"
                         className="group-hover:stroke-white transition-colors"
-                      />
-                      {/* Pulse Animation */}
-                      <motion.circle
-                        r="3"
-                        fill="white"
-                        initial={{ offsetDistance: "0%" }}
-                        animate={{ offsetDistance: "100%" }}
-                        transition={{ 
-                          duration: 3 / (link.strength + 0.5), 
-                          repeat: Infinity, 
-                          ease: "linear",
-                          delay: Math.random() * 2
-                        }}
-                        style={{ 
-                          offsetPath: `path('M ${x1},${y1} L ${x2},${y2}')`,
-                          visibility: link.strength > 0.3 ? 'visible' : 'hidden',
-                          opacity: 0.8
-                        }}
                       />
                     </g>
                   );
@@ -1069,13 +1098,11 @@ const NeuralExercises = () => {
             setIsExercising(false);
             setActiveExercise(null);
             setAiFeedback("Optimization complete. Neural parity achieved.");
-            // Simulate optimization results
             setSignalStrength(s => Math.min(100, s + Math.random() * 15));
             setNoiseLevel(n => Math.max(0, n - Math.random() * 15));
             return 100;
           }
           
-          // Update feedback periodically
           if (prev % 30 === 0 && exercise) {
             const feedbackIdx = Math.floor(prev / 33);
             if (exercise.feedback[feedbackIdx]) {
